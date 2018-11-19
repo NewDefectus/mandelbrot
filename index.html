@@ -17,7 +17,7 @@
 </div>
 
 <div width=850px height=850px style="overflow: hidden; display: inline-block">
-<canvas id="canvas" width="800" height="800"></canvas>
+<canvas id="canvas" width="800" height="800" style="border: 3px solid black"></canvas>
 </div>
 
 </body>
@@ -81,6 +81,7 @@ posIm.addEventListener("input", function() { parameters.y = this.value || 0; } )
 
 function updateURL()
 {
+	// Here we put all the custom parameters straight into the URL for easy access. It's also a great failsafe if you accidentally close the page.
 	window.history.replaceState({ "pageTitle": "Mandelbrot Set" }, "", (parameters.x==0&&parameters.y==0&&parameters.scale==2&&parameters.res==100&&parameters.iters==6&&parameters.color)?"?":"?autogen"
 	+((parameters.res==100)?"":			"&res="+parameters.res)
 	+((parameters.iters==6)?"":			"&iters="+parameters.iters)
@@ -109,22 +110,24 @@ canvas.addEventListener("wheel", shiftScale);
 var ctx = canvas.getContext("2d");
 var wid = canvas.width;
 var hei = canvas.height;
-var iterations, pointSize = 0;
+var iterations, pointSize, pixelSize, iterationsSquared = 0;
 var canvasSize = wid / rect.width;
-var maxColor=2**24 / iterations;
 var colorIterations = true;
 ctx.fillStyle = "black";
 
 
-var c = { a: 0, b: 0 };
 
-function iterateF()
+var palette = createPalette();
+
+
+
+function iterateF(x, y) // f(z)=z²+c, f(f(f(f(f(...f(0)))))...) < ∞
 {
 	let num = { a: 0, b: 0 };
 	for(let i = 0; i < iterations; i++)
 	{
-		num = { a: num.a**2 - num.b**2 + c.a, b: 2 * num.a * num.b + c.b };
-		if(Math.sqrt(num.a**2+num.b**2) > iterations)
+		num = { a: num.a**2 - num.b**2 + x, b: 2 * num.a * num.b + y }; // This is equivalent to z=z²+c, where z and c are complex numbers.
+		if(num.a**2+num.b**2 > iterationsSquared)	// It doesn't have to be iterationsSquared. In theory, it should be infinity, but since we're only calculating a finite amount of iterations, this number is mostly arbitrary.
 			return i;
 	}
 	return -1;
@@ -137,10 +140,10 @@ function clear()
 
 function drawMandelbrot()
 {
+	// Let's prepare the set's environment.
 	parameters.autogen = false;
 	pointSize = parameters.scale / parameters.res;
 	iterations = Number(parameters.iters);
-	maxColor=2**24 / iterations;
 	colorIterations = parameters.color;
 	let pointColor = 0;
 	
@@ -154,26 +157,46 @@ function drawMandelbrot()
 	
 	clear();
 	
+	pixelSize = pointSize * canvasSize;
+	iterationsSquared = iterations**2;
+	
+	
+	// Now, let's draw it!
 	for(let x = rect.xMin; x < rect.xMax; x+=pointSize)
 		for(let y = rect.yMin; y < rect.yMax; y+=pointSize)
 		{
-			c = { a: x, b: y };
-			pointColor = iterateF();
+			pointColor = iterateF(x, y);
 			if(colorIterations || pointColor == -1)
-				drawRect(x, y, x + pointSize, y + pointSize, pointColor);
+				drawPixel(x, y, pointColor);
 		}
+	
 	
 	updateURL();
 }
 
-function drawRect(x, y, x2, y2, color = -1)
+function drawPixel(x, y, iteration)
 {
-	ctx.fillStyle = "#" + ((color<0) ? "000000" : Math.round(maxColor * color).toString(16));
-	ctx.fillRect((x - rect.xMin) * canvasSize, (y - rect.yMin) * canvasSize, (x2 - x) * canvasSize, (y2 - y) * canvasSize);
+	// Do you see the pixels 'melting' when you use many iterations and zoom in very deep? I don't know what causes them. If you have any idea, I'd love to know.
+	ctx.fillStyle = (iteration<0) ? "#000000" : palette[iteration%palette.length];
+	ctx.fillRect((x - rect.xMin) * canvasSize, (y - rect.yMin) * canvasSize, pixelSize, pixelSize);
+}
+
+function createPalette()
+{
+	// I initially generated a color for every pixel before I realized it's much more efficient to have a preset palette with a color for each iteration.
+	let palette = [];
+	for(let i = 0; i < 63; i++)
+		palette.push("#"+Math.round(
+			2**24*i/63
+		).toString(16)
+		);
+	return palette;
+	
 }
 
 function shiftCoords(e, multiplier = 1)
 {
+	// This is for navigation around the complex plane.
 	let x = e.offsetX / canvasSize - rect.width / 2;
 	let y = (canvas.height - e.offsetY) / canvasSize - rect.height / 2;
 	
@@ -186,20 +209,13 @@ function shiftCoords(e, multiplier = 1)
 	drawMandelbrot();
 }
 
-var zoomable = true;
-
 function shiftScale(e)
 {
-	if(zoomable)
-	{
-		parameters.scale *= 2**(-e.wheelDelta / Math.abs(e.wheelDelta));
-		posScale.value = parameters.scale;
-		zoomable = false;
-		
-		setTimeout(function() {zoomable = true}, 100);
-		
-		shiftCoords(e, 0.5);
-	}
+	// And this is to zoom in on the complex plane, as well as move about it slightly.
+	parameters.scale *= 2**(-e.wheelDelta / Math.abs(e.wheelDelta));
+	posScale.value = parameters.scale;
+	
+	shiftCoords(e, 0.5);
 }
 
 
