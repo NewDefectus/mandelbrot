@@ -1,0 +1,208 @@
+<head>
+	<title>Mandelbrot Set</title>
+</head>
+
+<body style="font-family: arial">
+<div style="width: 800px; height: 200px">
+	Granularity (resolution): <input type="number" id="res" min="1" max="850" step="1" value="100">/850<br>
+	Iterations (precision): <input type="number" id="iters" min="1" step="1" value="8"><br><br>
+	
+	Coordinates: <input type="number" id="posRe" value="0" style="width: 100px"> + <input type="number" id="posIm" value="0" style="width: 100px">i<br>
+	Scale: <input type="number" id="posScale" value="2" min="0" style="width: 100px"><br><br>
+	
+	Color each iteration: <input type="checkbox" id="color" checked><br><br><br>
+	
+	
+	<button id="drawButton">Draw</button>
+</div>
+
+<div width=850px height=850px style="overflow: hidden; display: inline-block">
+<canvas id="canvas" width="800" height="800"></canvas>
+</div>
+
+</body>
+
+<script>
+var res = document.getElementById("res");
+var iters = document.getElementById("iters");
+var colorIters = document.getElementById("color");
+var posRe = document.getElementById("posRe");
+var posIm = document.getElementById("posIm");
+var posScale = document.getElementById("posScale");
+
+function getPreset()
+{
+	let settings = (new URL(window.location.href)).searchParams;
+	
+	let setCoords = (settings.get("coords") || "0").split(/(-*\d.*i*(?=-| ))/);
+	let setScale = parseFloat(settings.get("scale") || 2);
+	let setRes = parseInt(settings.get("res") || 100);
+	let setIters = parseInt(settings.get("iters") || 6);
+	let setAutogen = settings.has("autogen");
+	let setDontColor = settings.has("nocolor") || settings.has("nocolour");
+
+	let setCoordX = 0; let setCoordY = 0;
+
+	for(let i of setCoords)
+	{
+		if(i.includes('i'))
+			if(i == 'i' || i == " i")
+				setCoordY++;
+			else if(i == "-i" || i == " -i")
+				setCoordY--;
+			else
+				setCoordY+=parseFloat(i);
+		else
+			if(i) setCoordX+=parseFloat(i);
+	}
+	
+	res.value = setRes;
+	iters.value = setIters;
+	colorIters.checked = !setDontColor;
+	posRe.value = setCoordX;
+	posIm.value = setCoordY;
+	posScale.value = setScale;
+	
+	
+	return { x: setCoordX, y: setCoordY, scale: setScale, res: setRes, iters: setIters, autogen: setAutogen, color: !setDontColor };
+
+}
+
+var parameters = getPreset();
+
+document.getElementById("drawButton").addEventListener("click", drawMandelbrot);
+
+res.addEventListener("input", function() { parameters.res = this.value || 100; } );
+iters.addEventListener("input", function() { parameters.iters = this.value || 6; } );
+posScale.addEventListener("input", function() { parameters.scale = this.value || 2; } );
+colorIters.addEventListener("input", function() { parameters.color = this.checked; } );
+posRe.addEventListener("input", function() { parameters.x = this.value || 0; } );
+posIm.addEventListener("input", function() { parameters.y = this.value || 0; } );
+
+function updateURL()
+{
+	window.history.replaceState({ "pageTitle": "Mandelbrot Set" }, "", (parameters.x==0&&parameters.y==0&&parameters.scale==2&&parameters.res==100&&parameters.iters==6&&parameters.color)?"?":"?autogen"
+	+((parameters.res==100)?"":			"&res="+parameters.res)
+	+((parameters.iters==6)?"":			"&iters="+parameters.iters)
+	+((parameters.x==0 && parameters.y==0)?"":	"&coords="+((parameters.x==0)?"":parameters.x)+
+		(
+			(parameters.y==0)?"":(
+				(parameters.y<0)?(
+					(parameters.y==-1)?"-i":parameters.y + "i"
+				):(
+					((parameters.x==0)?"":"+") + ((parameters.y==1)?"i":parameters.y + "i")
+				)
+			)
+		)
+	)
+	+((parameters.scale==2)?"":			"&scale="+parameters.scale)
+	+((parameters.color)?"":			"&nocolor")
+	);
+}
+
+
+var rect = { xMin: 0, yMin: 0, xMax: 0, yMax: 0, width: 0, height: 0 };
+
+var canvas = document.getElementById("canvas");
+canvas.addEventListener("click", shiftCoords);
+canvas.addEventListener("wheel", shiftScale);
+var ctx = canvas.getContext("2d");
+var wid = canvas.width;
+var hei = canvas.height;
+var iterations, pointSize = 0;
+var canvasSize = wid / rect.width;
+var maxColor=2**24 / iterations;
+var colorIterations = true;
+ctx.fillStyle = "black";
+
+
+var c = { a: 0, b: 0 };
+
+function iterateF()
+{
+	let num = { a: 0, b: 0 };
+	for(let i = 0; i < iterations; i++)
+	{
+		num = { a: num.a**2 - num.b**2 + c.a, b: 2 * num.a * num.b + c.b };
+		if(Math.sqrt(num.a**2+num.b**2) > iterations)
+			return i;
+	}
+	return -1;
+}
+
+function clear()
+{
+	ctx.clearRect(0, 0, wid, hei);
+}
+
+function drawMandelbrot()
+{
+	parameters.autogen = false;
+	pointSize = parameters.scale / parameters.res;
+	iterations = Number(parameters.iters);
+	maxColor=2**24 / iterations;
+	colorIterations = parameters.color;
+	let pointColor = 0;
+	
+	let center = { x: Number(posRe.value), y: -Number(posIm.value) };
+	rect.width = rect.height = parameters.scale * 2;
+	rect.xMin = center.x - rect.width / 2;
+	rect.xMax = center.x + rect.width / 2;
+	rect.yMin = center.y - rect.height / 2;
+	rect.yMax = center.y + rect.height / 2;
+	canvasSize = canvas.width / rect.width;
+	
+	clear();
+	
+	for(let x = rect.xMin; x < rect.xMax; x+=pointSize)
+		for(let y = rect.yMin; y < rect.yMax; y+=pointSize)
+		{
+			c = { a: x, b: y };
+			pointColor = iterateF();
+			if(colorIterations || pointColor == -1)
+				drawRect(x, y, x + pointSize, y + pointSize, pointColor);
+		}
+	
+	updateURL();
+}
+
+function drawRect(x, y, x2, y2, color = -1)
+{
+	ctx.fillStyle = "#" + ((color<0) ? "000000" : Math.round(maxColor * color).toString(16));
+	ctx.fillRect((x - rect.xMin) * canvasSize, (y - rect.yMin) * canvasSize, (x2 - x) * canvasSize, (y2 - y) * canvasSize);
+}
+
+function shiftCoords(e, multiplier = 1)
+{
+	let x = e.offsetX / canvasSize - rect.width / 2;
+	let y = (canvas.height - e.offsetY) / canvasSize - rect.height / 2;
+	
+	parameters.x += x * multiplier;
+	parameters.y += y * multiplier;
+	
+	posRe.value=parameters.x;
+	posIm.value=parameters.y;
+	
+	drawMandelbrot();
+}
+
+var zoomable = true;
+
+function shiftScale(e)
+{
+	if(zoomable)
+	{
+		parameters.scale *= 2**(-e.wheelDelta / Math.abs(e.wheelDelta));
+		posScale.value = parameters.scale;
+		zoomable = false;
+		
+		setTimeout(function() {zoomable = true}, 100);
+		
+		shiftCoords(e, 0.5);
+	}
+}
+
+
+if(parameters.autogen)
+	drawMandelbrot();
+</script>
