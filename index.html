@@ -235,7 +235,7 @@ function shiftCoords(e, multiplier = 1)
 function shiftScale(e, zoom)
 {
 	// And this is to zoom in on the complex plane, as well as move about it slightly.
-	let zoom = zoom | e.deltaY / Math.abs(e.deltaY);
+	zoom = zoom | e.deltaY / Math.abs(e.deltaY);
 	parameters.scale *= 2**zoom;
 	posScale.value = parameters.scale;
 	
