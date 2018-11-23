@@ -1,8 +1,9 @@
 <head>
 	<title>Mandelbrot Set</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
 </head>
 
-<body style="font-family: arial; overflow: hidden">
+<body style="font-family: arial">
 <div style="width: 800px; height: 200px">
 	Granularity (resolution): <input type="number" id="res" min="1" max="850" step="1" value="100">/850<br>
 	Iterations (precision): <input type="number" id="iters" min="1" step="1" value="8"><br><br>
@@ -70,7 +71,7 @@ function getPreset()
 
 var parameters = getPreset();
 
-document.getElementById("drawButton").addEventListener("click", drawMandelbrot);
+document.getElementById("drawButton").addEventListener("click", function() { drawMandelbrot(parameters.res) } );
 
 res.addEventListener("input", function() { parameters.res = this.value || 100; } );
 iters.addEventListener("input", function() { parameters.iters = this.value || 6; } );
@@ -104,9 +105,19 @@ function updateURL()
 
 var rect = { xMin: 0, yMin: 0, xMax: 0, yMax: 0, width: 0, height: 0 };
 
+var doubleTapped = false;
+
 var canvas = document.getElementById("canvas");
-canvas.addEventListener("click", shiftCoords);
-canvas.addEventListener("wheel", shiftScale);
+if(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))
+{
+	canvas.addEventListener("mousedown", shiftCoords);
+	canvas.addEventListener("gestureend", shiftScale);
+}
+else
+{
+	canvas.addEventListener("click", shiftCoords);
+	canvas.addEventListener("wheel", shiftScale);
+}
 var ctx = canvas.getContext("2d");
 var wid = canvas.width;
 var hei = canvas.height;
@@ -138,11 +149,11 @@ function clear()
 	ctx.clearRect(0, 0, wid, hei);
 }
 
-function drawMandelbrot()
+function drawMandelbrot(res)
 {
 	// Let's prepare the set's environment.
 	parameters.autogen = false;
-	pointSize = parameters.scale / parameters.res;
+	pointSize = parameters.scale / res;
 	iterations = Number(parameters.iters);
 	colorIterations = parameters.color;
 	let pointColor = 0;
@@ -200,19 +211,29 @@ function shiftCoords(e, multiplier = 1)
 	let x = e.offsetX / canvasSize - rect.width / 2;
 	let y = (canvas.height - e.offsetY) / canvasSize - rect.height / 2;
 	
+	console.log(canvasSize);
+	
 	parameters.x += x * multiplier;
 	parameters.y += y * multiplier;
 	
 	posRe.value=parameters.x;
 	posIm.value=parameters.y;
 	
-	drawMandelbrot();
+	e.preventDefault();
+	
+	drawMandelbrot(20);
+	setTimeout(function() { drawMandelbrot(parameters.res) }, 2);
 }
 
 function shiftScale(e)
 {
 	// And this is to zoom in on the complex plane, as well as move about it slightly.
-	parameters.scale *= 2**(e.deltaY / Math.abs(e.deltaY));
+	let delta = 0;
+	if(e.scale)
+		delta = (e.scale > 1) ? 1 : -1;
+	else
+		delta = e.deltaY / Math.abs(e.deltaY);
+	parameters.scale *= 2**delta;
 	posScale.value = parameters.scale;
 	
 	shiftCoords(e, 0.5);
@@ -220,5 +241,5 @@ function shiftScale(e)
 
 
 if(parameters.autogen)
-	drawMandelbrot();
+	drawMandelbrot(parameters.res);
 </script>
