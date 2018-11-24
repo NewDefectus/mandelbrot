@@ -4,18 +4,21 @@
 </head>
 
 <body style="font-family: arial">
-<div style="width: 800px; height: 200px">
+<div>
 	Granularity (resolution): <input type="number" id="res" min="1" max="850" step="1" value="100">/850<br>
 	Iterations (precision): <input type="number" id="iters" min="1" step="1" value="8"><br><br>
 	
 	Coordinates: <input type="number" id="posRe" value="0" style="width: 100px"> + <input type="number" id="posIm" value="0" style="width: 100px">i<br>
-	Scale: <input type="number" id="posScale" value="2" min="0" style="width: 100px"><br><br>
+	Scale: <input type="number" id="posScale" value="2" min="0" style="width: 100px"><br>
+	<button id="resetButton">Reset</button><br><br>
 	
 	Color each iteration: <input type="checkbox" id="color" checked><br><br><br>
 	
 	
 	<button id="drawButton">Draw</button>
 </div>
+
+<br>
 
 <div width=850px height=850px style="overflow: hidden; display: inline-block">
 <canvas id="canvas" width="800" height="800" style="border: 3px solid black"></canvas>
@@ -72,6 +75,7 @@ function getPreset()
 var parameters = getPreset();
 
 document.getElementById("drawButton").addEventListener("click", function() { drawMandelbrot(parameters.res) } );
+document.getElementById("resetButton").addEventListener("click", function() { parameters.X = 0; parameters.Y = 0; parameters.scale = 2; posRe.value = 0; posIm.value = 0; posScale.value = 2; drawMandelbrot(parameters.res) } );
 
 res.addEventListener("input", function() { parameters.res = this.value || 100; } );
 iters.addEventListener("input", function() { parameters.iters = this.value || 6; } );
