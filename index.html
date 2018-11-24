@@ -1,30 +1,79 @@
 <head>
 	<title>Mandelbrot Set</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
+	<style>
+#canvasContainer
+{
+	overflow: hidden;
+	transform-origin: top left;
+	position: absolute;
+}
+.input::-webkit-outer-spin-button,
+.input::-webkit-inner-spin-button
+{
+	-webkit-appearance: none;
+	margin: 0;
+}
+#zooms
+{
+	font-size: 1.5em;
+	user-select: none;
+        -moz-user-select: none;
+        -khtml-user-select: none;
+        -webkit-user-select: none;
+        -o-user-select: none;
+}
+	</style>
 </head>
 
-<body style="font-family: arial">
-<div>
-	Granularity (resolution): <input type="number" id="res" min="1" max="850" step="1" value="100">/850<br>
-	Iterations (precision): <input type="number" id="iters" min="1" step="1" value="8"><br><br>
-	
-	Coordinates: <input type="number" id="posRe" value="0" style="width: 100px"> + <input type="number" id="posIm" value="0" style="width: 100px">i<br>
-	Scale: <input type="number" id="posScale" value="2" min="0" style="width: 100px"><br>
-	<button id="resetButton">Reset</button><br><br>
-	
-	Color each iteration: <input type="checkbox" id="color" checked><br><br><br>
-	
-	
-	<button id="drawButton">Draw</button>
+<body id="body" style="font-family: arial; margin: 0; overflow: hidden">
+
+<div id="canvasContainer" width=800px height=800px>
+<canvas id="canvas" width="800px" height="800px"></canvas>
 </div>
 
-<br>
-
-<div width=850px height=850px style="overflow: hidden; display: inline-block">
-<canvas id="canvas" width="800" height="800" style="border: 3px solid black"></canvas>
+<div style="background-color: white; border: 3px solid black; position: fixed">
+	Granularity (resolution): <input type="number" class="input" id="res" min="1" max="800" step="1" value="100">/800<br>
+	Iterations (precision): <input type="number" class="input" id="iters" min="1" step="1" value="8"><br><br>
+	
+	Coordinates: <input type="number" class="input" id="posRe" value="0" style="width: 100px"> + <input type="number" class="input" id="posIm" value="0" style="width: 100px">i<br>
+	Scale: <input type="number" class="input" id="posScale" value="2" min="0" style="width: 100px">&nbsp; <span id="zooms"><span id="zoomIn">+</span>&nbsp; <span id="zoomOut">-</span></span><br><br>
+	
+	Color each iteration: <input type="checkbox" id="color" checked> <button id="resetButton">Reset</button> <button id="drawButton">Draw</button>
 </div>
 
 </body>
+
+
+
+<script>
+var canvas = document.getElementById("canvas");
+var canvasContainer = document.getElementById("canvasContainer");
+var body = document.getElementById("body");
+
+window.addEventListener("resize", updateView);
+updateView();
+
+function updateView()
+{
+	let largeScale = Math.max(window.innerWidth, window.innerHeight);
+	let smallScale = Math.min(window.innerWidth, window.innerHeight);
+	let translateString = "";
+	
+	if(window.innerWidth > window.innerHeight)
+		translateString = "translateY(" + -(largeScale - smallScale)/4 + "px)";
+	else
+		translateString = "translateX(" + -(largeScale - smallScale)/4 + "px)";
+	
+	let transScale = largeScale / 800;
+	
+	
+	canvasContainer.style.transform = "scale(" + transScale + ", " + transScale + ") " + translateString;
+}
+</script>
+
+
+
 
 <script>
 var res = document.getElementById("res");
@@ -75,7 +124,8 @@ function getPreset()
 var parameters = getPreset();
 
 document.getElementById("drawButton").addEventListener("click", function() { drawMandelbrot(parameters.res) } );
-document.getElementById("resetButton").addEventListener("click", function() { parameters.X = 0; parameters.Y = 0; parameters.scale = 2; posRe.value = 0; posIm.value = 0; posScale.value = 2; drawMandelbrot(parameters.res) } );
+body.addEventListener("keydown", function() { if(event.keyCode == 13) drawMandelbrot(parameters.res) } );
+document.getElementById("resetButton").addEventListener("click", function() { parameters.x = 0; parameters.y = 0; parameters.scale = 2; drawMandelbrot(parameters.res) } );
 
 res.addEventListener("input", function() { parameters.res = this.value || 100; } );
 iters.addEventListener("input", function() { parameters.iters = this.value || 6; } );
@@ -84,8 +134,15 @@ colorIters.addEventListener("input", function() { parameters.color = this.checke
 posRe.addEventListener("input", function() { parameters.x = Number(this.value) || 0; } );
 posIm.addEventListener("input", function() { parameters.y = Number(this.value) || 0; } );
 
-function updateURL()
+function updateParameters()
 {
+	posRe.value = parameters.x;
+	posIm.value = parameters.y;
+	posScale.value = parameters.scale;
+	iters.value = parameters.iters;
+	colorIters.checked = parameters.color;
+	res.value = parameters.res;
+	
 	// Here we put all the custom parameters straight into the URL for easy access. It's also a great failsafe if you accidentally close the page.
 	window.history.replaceState({ "pageTitle": "Mandelbrot Set" }, "", (parameters.x==0&&parameters.y==0&&parameters.scale==2&&parameters.res==100&&parameters.iters==6&&parameters.color)?"?":"?autogen"
 	+((parameters.res==100)?"":			"&res="+parameters.res)
@@ -109,33 +166,37 @@ function updateURL()
 
 var rect = { xMin: 0, yMin: 0, xMax: 0, yMax: 0, width: 0, height: 0 };
 
-var distanceBetweenFingers = 0;
-
-var canvas = document.getElementById("canvas");
 if(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))
 {
 	canvas.addEventListener("mousedown", shiftCoords);
-	canvas.addEventListener("touchstart", function(e) { if(e.touches.length > 1) distanceBetweenFingers = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY) });
-	canvas.addEventListener("touchend", function(e) {
-		if(e.touches.length > 1)
-		{
-			if(distanceBetweenFingers > Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY))
-				shiftScale(e, -1);
-			else
-				shiftScale(e, 1);
-		}
-	});
+	document.getElementById("zoomIn").addEventListener("mousedown", zoomIn );
+	document.getElementById("zoomOut").addEventListener("mousedown", zoomOut );
 }
 else
 {
 	canvas.addEventListener("click", shiftCoords);
 	canvas.addEventListener("wheel", shiftScale);
+	document.getElementById("zoomIn").addEventListener("click", zoomIn );
+	document.getElementById("zoomOut").addEventListener("click", zoomOut );
 }
+
+function zoomIn()
+{
+	parameters.scale /= 2;
+	drawMandelbrot(20);
+	setTimeout(function() { drawMandelbrot(parameters.res) }, 2);
+}
+
+function zoomOut()
+{
+	parameters.scale *= 2;
+	drawMandelbrot(20);
+	setTimeout(function() { drawMandelbrot(parameters.res) }, 2);
+}
+
 var ctx = canvas.getContext("2d");
-var wid = canvas.width;
-var hei = canvas.height;
 var iterations, pointSize, pixelSize, iterationsSquared = 0;
-var canvasSize = wid / rect.width;
+var canvasSize = canvas.width / rect.width;
 var colorIterations = true;
 ctx.fillStyle = "black";
 
@@ -150,17 +211,15 @@ function iterateF(x, y) // f(z)=z²+c, f(f(f(f(f(...f(0)))))...) < ∞
 	let num = { a: 0, b: 0 };
 	for(let i = 0; i < iterations; i++)
 	{
-		num = { a: num.a**2 - num.b**2 + x, b: 2 * num.a * num.b + y }; // This is equivalent to z=z²+c, where z and c are complex numbers.
-		if(num.a**2+num.b**2 > iterationsSquared)	// It doesn't have to be iterationsSquared. In theory, it should be infinity, but since we're only calculating a finite amount of iterations, this number is mostly arbitrary.
+		num = { a: num.a*num.a - num.b*num.b + x, b: 2 * num.a * num.b + y }; // This is equivalent to z=z²+c, where z and c are complex numbers.
+		if(num.a*num.a+num.b*num.b > 4)	// It doesn't have to be 4. In theory, it should be infinity, but since we're only calculating a finite amount of iterations, this number is mostly arbitrary.!
 			return i;
 	}
 	return -1;
 }
 
-function clear()
-{
-	ctx.clearRect(0, 0, wid, hei);
-}
+var oldPos = { x: 0, y: 0, scale: 2, res: 100 };
+var limitReached = false;
 
 function drawMandelbrot(res)
 {
@@ -171,7 +230,7 @@ function drawMandelbrot(res)
 	colorIterations = parameters.color;
 	let pointColor = 0;
 	
-	let center = { x: Number(posRe.value), y: -Number(posIm.value) };
+	let center = { x: parameters.x, y: -parameters.y };
 	rect.width = rect.height = parameters.scale * 2;
 	rect.xMin = center.x - rect.width / 2;
 	rect.xMax = center.x + rect.width / 2;
@@ -179,28 +238,50 @@ function drawMandelbrot(res)
 	rect.yMax = center.y + rect.height / 2;
 	canvasSize = canvas.width / rect.width;
 	
-	clear();
-	
 	pixelSize = pointSize * canvasSize;
 	iterationsSquared = iterations**2;
 	
+	let oldX = 0;
+	let oldY = 0;
+	
+	limitReached = false;
 	
 	// Now, let's draw it!
 	for(let x = rect.xMin; x < rect.xMax; x+=pointSize)
+	{
+		if(oldX == x || limitReached)
+		{
+			alert("Error: Can't zoom further here. Try moving closer to the centre.");
+			break;
+		}
+		oldX = x;
 		for(let y = rect.yMin; y < rect.yMax; y+=pointSize)
 		{
+			if(oldY == y)
+			{
+				limitReached = true;
+				break;
+			}
+			oldY = y;
 			pointColor = iterateF(x, y);
 			if(colorIterations || pointColor == -1)
 				drawPixel(x, y, pointColor);
 		}
+	}
 	
+	if(limitReached)
+	{
+		parameters.x = oldPos.x;
+		parameters.y = oldPos.y;
+		parameters.scale = oldPos.scale;
+		parameters.res = oldPos.res;
+	}
 	
-	updateURL();
+	updateParameters();
 }
 
 function drawPixel(x, y, iteration)
 {
-	// Do you see the pixels 'melting' when you use many iterations and zoom in very deep? I don't know what causes them. If you have any idea, I'd love to know.
 	ctx.fillStyle = (iteration<0) ? "#000000" : palette[iteration%palette.length];
 	ctx.fillRect((x - rect.xMin) * canvasSize, (y - rect.yMin) * canvasSize, pixelSize, pixelSize);
 }
@@ -210,9 +291,9 @@ function createPalette()
 	// I initially generated a color for every pixel before I realized it's much more efficient to have a preset palette with a color for each iteration.
 	let palette = [];
 	for(let i = 0; i < 63; i++)
-		palette.push("#"+Math.round(
+		palette.push("#"+("000000"+Math.round(
 			2**24*i/63
-		).toString(16)
+		).toString(16)).slice(-6)
 		);
 	return palette;
 	
@@ -224,6 +305,9 @@ function shiftCoords(e, multiplier = 1)
 	let x = e.offsetX / canvasSize - rect.width / 2;
 	let y = (canvas.height - e.offsetY) / canvasSize - rect.height / 2;
 	
+	oldPos.x = parameters.x;
+	oldPos.y = parameters.y;
+	
 	parameters.x += x * multiplier;
 	parameters.y += y * multiplier;
 	
@@ -232,15 +316,15 @@ function shiftCoords(e, multiplier = 1)
 	
 	e.preventDefault();
 	
-	drawMandelbrot(20);
+	if(!limitReached) drawMandelbrot(20);
 	setTimeout(function() { drawMandelbrot(parameters.res) }, 2);
 }
 
-function shiftScale(e, zoom)
+function shiftScale(e)
 {
 	// And this is to zoom in on the complex plane, as well as move about it slightly.
-	zoom = zoom | e.deltaY / Math.abs(e.deltaY);
-	parameters.scale *= 2**zoom;
+	oldPos.scale = parameters.scale;
+	parameters.scale *= 2**(e.deltaY / Math.abs(e.deltaY));
 	posScale.value = parameters.scale;
 	
 	shiftCoords(e, 0.5);
