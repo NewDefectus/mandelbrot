@@ -37,9 +37,11 @@
 	Iterations (precision): <input type="number" class="input" id="iters" min="1" step="1" value="8"><br><br>
 	
 	Coordinates: <input type="number" class="input" id="posRe" value="0" style="width: 100px"> + <input type="number" class="input" id="posIm" value="0" style="width: 100px">i<br>
-	Scale: <input type="number" class="input" id="posScale" value="2" min="0" style="width: 100px">&nbsp; <span id="zooms"><span id="zoomIn">+</span>&nbsp; <span id="zoomOut">-</span></span><br><br>
+	Scale: <input type="number" class="input" id="posScale" value="2" min="0" style="width: 162px">&nbsp; <span id="zooms"><span id="zoomIn">+</span>&nbsp; <span id="zoomOut">-</span></span><br><br>
 	
-	Color each iteration: <input type="checkbox" id="color" checked> <button id="resetButton">Reset</button> <button id="drawButton">Draw</button>
+	Coloring: <input type="radio" name="color" id="colorPattern" value="0" checked>Pattern <input type="radio" name="color" id="colorSmooth" value="1">Smooth <input type="radio" name="color" id="colorNone" value="2">None<br><br>
+	
+	<button id="resetButton">Reset</button> <button id="drawButton">Draw</button>
 </div>
 
 </body>
@@ -78,7 +80,7 @@ function updateView()
 <script>
 var res = document.getElementById("res");
 var iters = document.getElementById("iters");
-var colorIters = document.getElementById("color");
+var coloringMethods = [document.getElementById("colorPattern"), document.getElementById("colorSmooth"), document.getElementById("colorNone")];
 var posRe = document.getElementById("posRe");
 var posIm = document.getElementById("posIm");
 var posScale = document.getElementById("posScale");
@@ -91,8 +93,8 @@ function getPreset()
 	let setScale = parseFloat(settings.get("scale") || 2);
 	let setRes = parseInt(settings.get("res") || 100);
 	let setIters = parseInt(settings.get("iters") || 6);
+	let setColoring = parseInt(settings.get("color") || settings.get("colour") || 0);
 	let setAutogen = settings.has("autogen");
-	let setDontColor = settings.has("nocolor") || settings.has("nocolour");
 
 	let setCoordX = 0; let setCoordY = 0;
 
@@ -111,13 +113,15 @@ function getPreset()
 	
 	res.value = setRes;
 	iters.value = setIters;
-	colorIters.checked = !setDontColor;
+	for(o of coloringMethods)
+		o.checked = false;
+	coloringMethods[setColoring].checked = true;
 	posRe.value = setCoordX;
 	posIm.value = setCoordY;
 	posScale.value = setScale;
 	
 	
-	return { x: setCoordX, y: setCoordY, scale: setScale, res: setRes, iters: setIters, autogen: setAutogen, color: !setDontColor };
+	return { x: setCoordX, y: setCoordY, scale: setScale, res: setRes, iters: setIters, color: setColoring, autogen: setAutogen };
 
 }
 
@@ -130,7 +134,8 @@ document.getElementById("resetButton").addEventListener("click", function() { pa
 res.addEventListener("input", function() { parameters.res = this.value || 100; } );
 iters.addEventListener("input", function() { parameters.iters = this.value || 6; } );
 posScale.addEventListener("input", function() { parameters.scale = this.value || 2; } );
-colorIters.addEventListener("input", function() { parameters.color = this.checked; } );
+for(let o of coloringMethods)
+	o.addEventListener("input", function() { if(this.checked) parameters.color = parseInt(this.value); } );
 posRe.addEventListener("input", function() { parameters.x = Number(this.value) || 0; } );
 posIm.addEventListener("input", function() { parameters.y = Number(this.value) || 0; } );
 
@@ -140,8 +145,10 @@ function updateParameters()
 	posIm.value = parameters.y;
 	posScale.value = parameters.scale;
 	iters.value = parameters.iters;
-	colorIters.checked = parameters.color;
 	res.value = parameters.res;
+	for(o in coloringMethods)
+		o.checked = false;
+	coloringMethods[parameters.color].checked = true;
 	
 	// Here we put all the custom parameters straight into the URL for easy access. It's also a great failsafe if you accidentally close the page.
 	window.history.replaceState({ "pageTitle": "Mandelbrot Set" }, "", (parameters.x==0&&parameters.y==0&&parameters.scale==2&&parameters.res==100&&parameters.iters==6&&parameters.color)?"?":"?autogen"
@@ -159,25 +166,25 @@ function updateParameters()
 		)
 	)
 	+((parameters.scale==2)?"":			"&scale="+parameters.scale)
-	+((parameters.color)?"":			"&nocolor")
+	+((parameters.color==0)?"":			"&color="+parameters.color)
 	);
 }
 
 
-var rect = { xMin: 0, yMin: 0, xMax: 0, yMax: 0, width: 0, height: 0 };
+var xMin, xMax, yMin, yMax, width, height = 0;
 
 if(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))
 {
 	canvas.addEventListener("mousedown", shiftCoords);
-	document.getElementById("zoomIn").addEventListener("mousedown", zoomIn );
-	document.getElementById("zoomOut").addEventListener("mousedown", zoomOut );
+	document.getElementById("zoomIn").addEventListener("mousedown", zoomIn);
+	document.getElementById("zoomOut").addEventListener("mousedown", zoomOut);
 }
 else
 {
 	canvas.addEventListener("click", shiftCoords);
 	canvas.addEventListener("wheel", shiftScale);
-	document.getElementById("zoomIn").addEventListener("click", zoomIn );
-	document.getElementById("zoomOut").addEventListener("click", zoomOut );
+	document.getElementById("zoomIn").addEventListener("click", zoomIn);
+	document.getElementById("zoomOut").addEventListener("click", zoomOut);
 }
 
 function zoomIn()
@@ -196,26 +203,43 @@ function zoomOut()
 
 var ctx = canvas.getContext("2d");
 var iterations, pointSize, pixelSize, iterationsSquared = 0;
-var canvasSize = canvas.width / rect.width;
-var colorIterations = true;
+var canvasSize = canvas.width / width;
 ctx.fillStyle = "black";
 
 
-
+var colorMethod = parameters.color;
 var palette = createPalette();
+
+
+var log2 = 1/Math.log(2);
 
 
 
 function iterateF(x, y) // f(z)=z²+c, f(f(f(f(f(...f(0)))))...) < ∞
 {
-	let num = { a: 0, b: 0 };
-	for(let i = 0; i < iterations; i++)
+	let A=x, a=x, b=y, i=0;
+	while(i++<iterations && a*a+b*b<4)
 	{
-		num = { a: num.a*num.a - num.b*num.b + x, b: 2 * num.a * num.b + y }; // This is equivalent to z=z²+c, where z and c are complex numbers.
-		if(num.a*num.a+num.b*num.b > 4)	// It doesn't have to be 4. In theory, it should be infinity, but since we're only calculating a finite amount of iterations, this number is mostly arbitrary.!
-			return i;
+		a = a*a-b*b+x;
+		b = 2*A*b+y;
+		A = a;
 	}
-	return -1;
+	return i;
+}
+
+function iterateFSmooth(x, y)
+{
+	let A=x, a=x, b=y, i=0;
+	while(i++<iterations && a*a+b*b<(1<<16))
+	{
+		a = a*a-b*b+x;
+		b = 2*A*b+y;
+		A = a;
+	}
+	if(i<=iterations)
+		return i + 1 - Math.log(Math.log(a*a+b*b) / 2 * log2) * log2;
+	else
+		return -1;
 }
 
 var oldPos = { x: 0, y: 0, scale: 2, res: 100 };
@@ -227,16 +251,16 @@ function drawMandelbrot(res)
 	parameters.autogen = false;
 	pointSize = parameters.scale / res;
 	iterations = Number(parameters.iters);
-	colorIterations = parameters.color;
+	colorMethod = parameters.color;
 	let pointColor = 0;
 	
 	let center = { x: parameters.x, y: -parameters.y };
-	rect.width = rect.height = parameters.scale * 2;
-	rect.xMin = center.x - rect.width / 2;
-	rect.xMax = center.x + rect.width / 2;
-	rect.yMin = center.y - rect.height / 2;
-	rect.yMax = center.y + rect.height / 2;
-	canvasSize = canvas.width / rect.width;
+	width = height = parameters.scale * 2;
+	xMin = center.x - width / 2;
+	xMax = center.x + width / 2;
+	yMin = center.y - height / 2;
+	yMax = center.y + height / 2;
+	canvasSize = canvas.width / width;
 	
 	pixelSize = pointSize * canvasSize;
 	iterationsSquared = iterations**2;
@@ -246,16 +270,19 @@ function drawMandelbrot(res)
 	
 	limitReached = false;
 	
+	ctx.clearRect(0, 0, canvas.width, canvas.height);
+	ctx.fillStyle="#000000";
+	
 	// Now, let's draw it!
-	for(let x = rect.xMin; x < rect.xMax; x+=pointSize)
+	for(let x = xMin; x < xMax; x+=pointSize)
 	{
 		if(oldX == x || limitReached)
 		{
-			alert("Error: Can't zoom further here. Try moving closer to the centre.");
+			alert("Can't zoom any further.");
 			break;
 		}
 		oldX = x;
-		for(let y = rect.yMin; y < rect.yMax; y+=pointSize)
+		for(let y = yMin; y < yMax; y+=pointSize)
 		{
 			if(oldY == y)
 			{
@@ -263,9 +290,19 @@ function drawMandelbrot(res)
 				break;
 			}
 			oldY = y;
-			pointColor = iterateF(x, y);
-			if(colorIterations || pointColor == -1)
+			pointColor = (colorMethod == 1) ? iterateFSmooth(x, y) : iterateF(x, y);
+			switch(colorMethod) {
+			case 0:
 				drawPixel(x, y, pointColor);
+				break;
+			case 1:
+				drawSmoothPixel(x, y, pointColor);
+				break;
+			case 2:
+				if(pointColor > iterations)
+					drawBlackPixel(x, y);
+				break;
+			}
 		}
 	}
 	
@@ -282,8 +319,19 @@ function drawMandelbrot(res)
 
 function drawPixel(x, y, iteration)
 {
-	ctx.fillStyle = (iteration<0) ? "#000000" : palette[iteration%palette.length];
-	ctx.fillRect((x - rect.xMin) * canvasSize, (y - rect.yMin) * canvasSize, pixelSize, pixelSize);
+	ctx.fillStyle = (iteration>iterations) ? "#000000" : palette[iteration%palette.length];
+	ctx.fillRect((x - xMin) * canvasSize, (y - yMin) * canvasSize, pixelSize, pixelSize);
+}
+
+function drawSmoothPixel(x, y, value)
+{
+	ctx.fillStyle = (value==-1) ? "#000000" : lerpColor(palette[Math.floor(value) % palette.length], palette[Math.ceil(value) % palette.length], value % 1);
+	ctx.fillRect((x - xMin) * canvasSize, (y - yMin) * canvasSize, pixelSize, pixelSize);
+}
+
+function drawBlackPixel(x, y)
+{
+	ctx.fillRect((x - xMin) * canvasSize, (y - yMin) * canvasSize, pixelSize, pixelSize);
 }
 
 function createPalette()
@@ -293,17 +341,27 @@ function createPalette()
 	for(let i = 0; i < 63; i++)
 		palette.push("#"+("000000"+Math.round(
 			2**24*i/63
-		).toString(16)).slice(-6)
-		);
+		).toString(16)).slice(-6));
 	return palette;
-	
+}
+
+function lerpColor(a, b, amount) {
+	let ah = parseInt(a.replace(/#/g, ''), 16),
+	ar = ah >> 16, ag = ah >> 8 & 0xff, ab = ah & 0xff,
+	bh = parseInt(b.replace(/#/g, ''), 16),
+	br = bh >> 16, bg = bh >> 8 & 0xff, bb = bh & 0xff,
+	rr = ar + amount * (br - ar),
+	rg = ag + amount * (bg - ag),
+	rb = ab + amount * (bb - ab);
+
+	return '#' + ((1 << 24) + (rr << 16) + (rg << 8) + rb | 0).toString(16).slice(1);
 }
 
 function shiftCoords(e, multiplier = 1)
 {
 	// This is for navigation around the complex plane.
-	let x = e.offsetX / canvasSize - rect.width / 2;
-	let y = (canvas.height - e.offsetY) / canvasSize - rect.height / 2;
+	let x = e.offsetX / canvasSize - width / 2;
+	let y = (canvas.height - e.offsetY) / canvasSize - height / 2;
 	
 	oldPos.x = parameters.x;
 	oldPos.y = parameters.y;
