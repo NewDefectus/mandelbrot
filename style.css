@@ -1,0 +1,177 @@
+﻿html, body {
+    overflow-x: hidden;
+    overscroll-behavior: none;
+    --base: 0.1vmin;
+    --shadow: calc(2 * var(--base)) calc(2 * var(--base)) 0px black;
+    --outline: calc(3 * var(--base)) solid black;
+}
+body {
+    position: relative;
+}
+
+#canvasContainer {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 0px;
+    height: 0px;
+    margin: auto;
+}
+
+.input::-webkit-outer-spin-button,
+.input::-webkit-inner-spin-button,
+.coordInput::-webkit-outer-spin-button,
+.coordInput::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+#coordinates {
+    color: white;
+    text-shadow: var(--shadow);
+    position: absolute;
+    z-index: 1;
+    font-size: calc(25 * var(--base));
+    font-family: monospace;
+    left: calc(2 * var(--base));
+}
+
+.coordInput {
+    width: 20.1ch;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    text-shadow: inherit;
+    background-color: transparent;
+    border: none;
+    outline: none;
+}
+
+#pathDescription {
+    position: relative;
+    width: inherit;
+    max-height: 100vh;
+    background-color: white;
+    color: white;
+    text-shadow: inherit;
+    outline: var(--outline);
+    overflow-x: hidden;
+}
+
+#pathOpener {
+    width: inherit;
+    font-size: calc(50 * var(--base));
+    text-align: center;
+    position: absolute;
+    color: white;
+    text-shadow: var(--shadow);
+}
+
+#pathCloser {
+    width: inherit;
+    font-size: calc(50 * var(--base));
+    text-align: center;
+    position: fixed;
+}
+
+#pathOpener, #pathCloser {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+#path {
+    position: fixed;
+    width: calc(350 * var(--base));
+    text-shadow: var(--shadow);
+}
+
+#mainPathDiv {
+    padding: calc(2 * var(--base));
+    position: relative;
+    text-align: center;
+    height: calc(160 * var(--base));
+    font-size: calc(24 * var(--base));
+    border-bottom: calc(3.5 * var(--base)) solid white;
+}
+
+#pathConclusion {
+    position: relative; 
+    bottom: calc(-70 * var(--base));
+}
+
+.pathPoint {
+    padding: calc(2 * var(--base));
+    height: calc(100 * var(--base));
+    font-size: calc(8 * var(--base));
+    border-top: calc(2.5 * var(--base)) solid white;
+    text-align: center;
+    line-height: calc(12 * var(--base));
+}
+
+#changeIters {
+    position: absolute;
+    bottom: calc(4 * var(--base));
+    text-align: left;
+    font-size: calc(20 * var(--base));
+    color: white;
+}
+
+#iters {
+    width: 5ch;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    text-shadow: inherit;
+    background-color: transparent;
+    border: none;
+    outline: none;
+    border-bottom: calc(1 * var(--base)) solid white;
+}
+
+#displayPathToggler {
+    position: absolute;
+    bottom: calc(4 * var(--base));
+    right: 0;
+    text-align: right;
+    font-size: calc(20 * var(--base));
+    color: white;
+    cursor: pointer;
+    text-decoration: underline
+}
+
+#changeRes {
+    position: fixed;
+    right: calc(4 * var(--base));
+    font-size: calc(30 * var(--base));
+    color: white;
+    width: calc(300 * var(--base));
+}
+
+#settings {
+    position: fixed;
+    margin-left: calc(353 * var(--base));
+    width: calc(560 * var(--base))
+}
+
+#paletteSettings {
+    background-color: white;
+    outline: var(--outline);
+    height: calc(400 * var(--base))
+}
+
+#settingsOpener {
+    background-color: mediumpurple;
+    outline: var(--outline);
+    width: calc(76 * var(--base));
+    margin-top: calc(3 * var(--base));
+    font-family: sans-serif;
+    color: white;
+    font-size: calc(24 * var(--base));
+    cursor: pointer
+}

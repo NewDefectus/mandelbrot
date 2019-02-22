@@ -1,394 +1,56 @@
 <head>
 	<title>Mandelbrot Set</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
-	<style>
-#canvasContainer
-{
-	overflow: hidden;
-	transform-origin: top left;
-	position: absolute;
-}
-.input::-webkit-outer-spin-button,
-.input::-webkit-inner-spin-button
-{
-	-webkit-appearance: none;
-	margin: 0;
-}
-#zooms
-{
-	font-size: 1.5em;
-	user-select: none;
-        -moz-user-select: none;
-        -khtml-user-select: none;
-        -webkit-user-select: none;
-        -o-user-select: none;
-}
-	</style>
+	<link rel="stylesheet" href="style.css">
 </head>
 
-<body id="body" style="font-family: arial; margin: 0; overflow: hidden">
+<body id="body" style="font-family: arial; margin: 0; overflow: hidden;">
 
-<div id="canvasContainer" width=800px height=800px>
-<canvas id="canvas" width="800px" height="800px"></canvas>
-</div>
+    <div id="canvasContainer">
+        <canvas id="canvas" width="800" height="800" style="z-index: -1; transform: translate(-50%, -50%)"></canvas>
+        <canvas id="overlayCanvas" width="800" height="800" style="position: absolute; top: 0; transform: translate(-50%, -50%); cursor: none;"></canvas>
+    </div>
 
-<div style="background-color: white; border: 3px solid black; position: fixed">
-	Granularity (resolution): <input type="number" class="input" id="res" min="1" max="800" step="1" value="100">/800<br>
-	Iterations (precision): <input type="number" class="input" id="iters" min="1" step="1" value="8"><br><br>
-	
-	Coordinates: <input type="number" class="input" id="posRe" value="0" style="width: 100px"> + <input type="number" class="input" id="posIm" value="0" style="width: 100px">i<br>
-	Scale: <input type="number" class="input" id="posScale" value="2" min="0" style="width: 162px">&nbsp; <span id="zooms"><span id="zoomIn">+</span>&nbsp; <span id="zoomOut">-</span></span><br><br>
-	
-	Coloring: <input type="radio" name="color" id="colorPattern" value="0" checked>Pattern <input type="radio" name="color" id="colorSmooth" value="1">Smooth <input type="radio" name="color" id="colorNone" value="2">None<br><br>
-	
-	<button id="resetButton">Reset</button> <button id="drawButton">Draw</button>
-</div>
+    <div id="path" style="height: 0">
+        <div id="pathOpener" style="top: -75px">
+            <span onclick="openPath()" style="cursor: pointer">&#8964;</span>
+        </div>
+        <div id="pathDescription" style="height: 0px">
+            <div id="mainPathDiv">
+                <span id="pathConclusion"></span>
+                <div id="changeIters">Limit: <input type="number" class="input" id="iters" min="1" step="1" value="16"></div>
+                <div id="displayPathToggler"></div>
+            </div>
+            <div style="position: absolute; bottom: calc(35 * var(--base)); width: inherit">
+                <div id="pathCloser">
+                    <span onclick="closePath()" style="cursor: pointer">&#8963;</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="coordinatesContainer">
+        <div id="coordinates">
+            <input type="text" maxlength="21" class="coordInput" id="posRe" value="0">&nbsp;<br />
+            <input type="text" maxlength="21" class="coordInput" id="posIm" value="0">i
+        </div>
+    </div>
+
+
+    <div id="changeRes">
+        Resolution: <span id="resolutionHint"></span><br />
+        <input id="res" value="100" min="1" max="800" type="range" style="width: 98%">
+    </div>
+
+    <div id="settings" style="top: -400px">
+        <div id="paletteSettings">
+            Continuous: <input type="checkbox" id="continuousCheckbox"><br />
+        </div>
+        <div id="settingsOpener" onclick="paletteSettingsAnimation.switch()">Palette</div>
+    </div>
 
 </body>
 
-
-
-<script>
-var canvas = document.getElementById("canvas");
-var canvasContainer = document.getElementById("canvasContainer");
-var body = document.getElementById("body");
-
-window.addEventListener("resize", updateView);
-updateView();
-
-function updateView()
-{
-	let largeScale = Math.max(window.innerWidth, window.innerHeight);
-	let smallScale = Math.min(window.innerWidth, window.innerHeight);
-	let translateString = "";
-	
-	if(window.innerWidth > window.innerHeight)
-		translateString = "translateY(" + -(largeScale - smallScale)/4 + "px)";
-	else
-		translateString = "translateX(" + -(largeScale - smallScale)/4 + "px)";
-	
-	let transScale = largeScale / 800;
-	
-	
-	canvasContainer.style.transform = "scale(" + transScale + ", " + transScale + ") " + translateString;
-}
-</script>
-
-
-
-
-<script>
-var res = document.getElementById("res");
-var iters = document.getElementById("iters");
-var coloringMethods = [document.getElementById("colorPattern"), document.getElementById("colorSmooth"), document.getElementById("colorNone")];
-var posRe = document.getElementById("posRe");
-var posIm = document.getElementById("posIm");
-var posScale = document.getElementById("posScale");
-
-function getPreset()
-{
-	let settings = (new URL(window.location.href)).searchParams;
-	
-	let setCoords = (settings.get("coords") || "0").split(/(-*\d.*i*(?=-| ))/);
-	let setScale = parseFloat(settings.get("scale") || 2);
-	let setRes = parseInt(settings.get("res") || 100);
-	let setIters = parseInt(settings.get("iters") || 6);
-	let setColoring = parseInt(settings.get("color") || settings.get("colour") || 0);
-	let setAutogen = settings.has("autogen");
-
-	let setCoordX = 0; let setCoordY = 0;
-
-	for(let i of setCoords)
-	{
-		if(i.includes('i'))
-			if(i == 'i' || i == " i")
-				setCoordY++;
-			else if(i == "-i" || i == " -i")
-				setCoordY--;
-			else
-				setCoordY+=parseFloat(i);
-		else
-			if(i) setCoordX+=parseFloat(i);
-	}
-	
-	res.value = setRes;
-	iters.value = setIters;
-	for(o of coloringMethods)
-		o.checked = false;
-	coloringMethods[setColoring].checked = true;
-	posRe.value = setCoordX;
-	posIm.value = setCoordY;
-	posScale.value = setScale;
-	
-	
-	return { x: setCoordX, y: setCoordY, scale: setScale, res: setRes, iters: setIters, color: setColoring, autogen: setAutogen };
-
-}
-
-var parameters = getPreset();
-
-document.getElementById("drawButton").addEventListener("click", function() { drawMandelbrot(parameters.res) } );
-body.addEventListener("keydown", function() { if(event.keyCode == 13) drawMandelbrot(parameters.res) } );
-document.getElementById("resetButton").addEventListener("click", function() { parameters.x = 0; parameters.y = 0; parameters.scale = 2; drawMandelbrot(parameters.res) } );
-
-res.addEventListener("input", function() { parameters.res = this.value || 100; } );
-iters.addEventListener("input", function() { parameters.iters = this.value || 6; } );
-posScale.addEventListener("input", function() { parameters.scale = this.value || 2; } );
-for(let o of coloringMethods)
-	o.addEventListener("input", function() { if(this.checked) parameters.color = parseInt(this.value); } );
-posRe.addEventListener("input", function() { parameters.x = Number(this.value) || 0; } );
-posIm.addEventListener("input", function() { parameters.y = Number(this.value) || 0; } );
-
-function updateParameters()
-{
-	posRe.value = parameters.x;
-	posIm.value = parameters.y;
-	posScale.value = parameters.scale;
-	iters.value = parameters.iters;
-	res.value = parameters.res;
-	for(o in coloringMethods)
-		o.checked = false;
-	coloringMethods[parameters.color].checked = true;
-	
-	// Here we put all the custom parameters straight into the URL for easy access. It's also a great failsafe if you accidentally close the page.
-	window.history.replaceState({ "pageTitle": "Mandelbrot Set" }, "", (parameters.x==0&&parameters.y==0&&parameters.scale==2&&parameters.res==100&&parameters.iters==6&&parameters.color)?"?":"?autogen"
-	+((parameters.res==100)?"":			"&res="+parameters.res)
-	+((parameters.iters==6)?"":			"&iters="+parameters.iters)
-	+((parameters.x==0 && parameters.y==0)?"":	"&coords="+((parameters.x==0)?"":parameters.x)+
-		(
-			(parameters.y==0)?"":(
-				(parameters.y<0)?(
-					(parameters.y==-1)?"-i":parameters.y + "i"
-				):(
-					((parameters.x==0)?"":"+") + ((parameters.y==1)?"i":parameters.y + "i")
-				)
-			)
-		)
-	)
-	+((parameters.scale==2)?"":			"&scale="+parameters.scale)
-	+((parameters.color==0)?"":			"&color="+parameters.color)
-	);
-}
-
-
-var xMin, xMax, yMin, yMax, width, height = 0;
-
-if(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent))
-{
-	canvas.addEventListener("mousedown", shiftCoords);
-	document.getElementById("zoomIn").addEventListener("mousedown", zoomIn);
-	document.getElementById("zoomOut").addEventListener("mousedown", zoomOut);
-}
-else
-{
-	canvas.addEventListener("click", shiftCoords);
-	canvas.addEventListener("wheel", shiftScale);
-	document.getElementById("zoomIn").addEventListener("click", zoomIn);
-	document.getElementById("zoomOut").addEventListener("click", zoomOut);
-}
-
-function zoomIn()
-{
-	parameters.scale /= 2;
-	drawMandelbrot(20);
-	setTimeout(function() { drawMandelbrot(parameters.res) }, 2);
-}
-
-function zoomOut()
-{
-	parameters.scale *= 2;
-	drawMandelbrot(20);
-	setTimeout(function() { drawMandelbrot(parameters.res) }, 2);
-}
-
-var ctx = canvas.getContext("2d");
-var iterations, pointSize, pixelSize, iterationsSquared = 0;
-var canvasSize = canvas.width / width;
-ctx.fillStyle = "black";
-
-
-var colorMethod = parameters.color;
-var palette = createPalette();
-
-
-var log2 = 1/Math.log(2);
-
-
-
-function iterateF(x, y) // f(z)=z²+c, f(f(f(f(f(...f(0)))))...) < ∞
-{
-	let A=x, a=x, b=y, i=0;
-	while(i++<iterations && a*a+b*b<4)
-	{
-		a = a*a-b*b+x;
-		b = 2*A*b+y;
-		A = a;
-	}
-	return i;
-}
-
-function iterateFSmooth(x, y)
-{
-	let A=x, a=x, b=y, i=0;
-	while(i++<iterations && a*a+b*b<(1<<16))
-	{
-		a = a*a-b*b+x;
-		b = 2*A*b+y;
-		A = a;
-	}
-	if(i<=iterations)
-		return i + 1 - Math.log(Math.log(a*a+b*b) / 2 * log2) * log2;
-	else
-		return -1;
-}
-
-var oldPos = { x: 0, y: 0, scale: 2, res: 100 };
-var limitReached = false;
-
-function drawMandelbrot(res)
-{
-	// Let's prepare the set's environment.
-	parameters.autogen = false;
-	pointSize = parameters.scale / res;
-	iterations = Number(parameters.iters);
-	colorMethod = parameters.color;
-	let pointColor = 0;
-	
-	let center = { x: parameters.x, y: -parameters.y };
-	width = height = parameters.scale * 2;
-	xMin = center.x - width / 2;
-	xMax = center.x + width / 2;
-	yMin = center.y - height / 2;
-	yMax = center.y + height / 2;
-	canvasSize = canvas.width / width;
-	
-	pixelSize = pointSize * canvasSize;
-	iterationsSquared = iterations**2;
-	
-	let oldX = 0;
-	let oldY = 0;
-	
-	limitReached = false;
-	
-	ctx.clearRect(0, 0, canvas.width, canvas.height);
-	ctx.fillStyle="#000000";
-	
-	// Now, let's draw it!
-	for(let x = xMin; x < xMax; x+=pointSize)
-	{
-		if(oldX == x || limitReached)
-		{
-			alert("Can't zoom any further.");
-			break;
-		}
-		oldX = x;
-		for(let y = yMin; y < yMax; y+=pointSize)
-		{
-			if(oldY == y)
-			{
-				limitReached = true;
-				break;
-			}
-			oldY = y;
-			pointColor = (colorMethod == 1) ? iterateFSmooth(x, y) : iterateF(x, y);
-			switch(colorMethod) {
-			case 0:
-				drawPixel(x, y, pointColor);
-				break;
-			case 1:
-				drawSmoothPixel(x, y, pointColor);
-				break;
-			case 2:
-				if(pointColor > iterations)
-					drawBlackPixel(x, y);
-				break;
-			}
-		}
-	}
-	
-	if(limitReached)
-	{
-		parameters.x = oldPos.x;
-		parameters.y = oldPos.y;
-		parameters.scale = oldPos.scale;
-		parameters.res = oldPos.res;
-	}
-	
-	updateParameters();
-}
-
-function drawPixel(x, y, iteration)
-{
-	ctx.fillStyle = (iteration>iterations) ? "#000000" : palette[iteration%palette.length];
-	ctx.fillRect((x - xMin) * canvasSize, (y - yMin) * canvasSize, pixelSize, pixelSize);
-}
-
-function drawSmoothPixel(x, y, value)
-{
-	ctx.fillStyle = (value==-1) ? "#000000" : lerpColor(palette[Math.floor(value) % palette.length], palette[Math.ceil(value) % palette.length], value % 1);
-	ctx.fillRect((x - xMin) * canvasSize, (y - yMin) * canvasSize, pixelSize, pixelSize);
-}
-
-function drawBlackPixel(x, y)
-{
-	ctx.fillRect((x - xMin) * canvasSize, (y - yMin) * canvasSize, pixelSize, pixelSize);
-}
-
-function createPalette()
-{
-	// I initially generated a color for every pixel before I realized it's much more efficient to have a preset palette with a color for each iteration.
-	let palette = [];
-	for(let i = 0; i < 63; i++)
-		palette.push("#"+("000000"+Math.round(
-			2**24*i/63
-		).toString(16)).slice(-6));
-	return palette;
-}
-
-function lerpColor(a, b, amount) {
-	let ah = parseInt(a.replace(/#/g, ''), 16),
-	ar = ah >> 16, ag = ah >> 8 & 0xff, ab = ah & 0xff,
-	bh = parseInt(b.replace(/#/g, ''), 16),
-	br = bh >> 16, bg = bh >> 8 & 0xff, bb = bh & 0xff,
-	rr = ar + amount * (br - ar),
-	rg = ag + amount * (bg - ag),
-	rb = ab + amount * (bb - ab);
-
-	return '#' + ((1 << 24) + (rr << 16) + (rg << 8) + rb | 0).toString(16).slice(1);
-}
-
-function shiftCoords(e, multiplier = 1)
-{
-	// This is for navigation around the complex plane.
-	let x = e.offsetX / canvasSize - width / 2;
-	let y = (canvas.height - e.offsetY) / canvasSize - height / 2;
-	
-	oldPos.x = parameters.x;
-	oldPos.y = parameters.y;
-	
-	parameters.x += x * multiplier;
-	parameters.y += y * multiplier;
-	
-	posRe.value=parameters.x;
-	posIm.value=parameters.y;
-	
-	e.preventDefault();
-	
-	if(!limitReached) drawMandelbrot(20);
-	setTimeout(function() { drawMandelbrot(parameters.res) }, 2);
-}
-
-function shiftScale(e)
-{
-	// And this is to zoom in on the complex plane, as well as move about it slightly.
-	oldPos.scale = parameters.scale;
-	parameters.scale *= 2**(e.deltaY / Math.abs(e.deltaY));
-	posScale.value = parameters.scale;
-	
-	shiftCoords(e, 0.5);
-}
-
-
-if(parameters.autogen)
-	drawMandelbrot(parameters.res);
-</script>
+<script src="palette.js"></script>
+<script src="animate.js"></script>
+<script src="main.js"></script>
