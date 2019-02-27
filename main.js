@@ -1,4 +1,5 @@
-﻿var canvas = document.getElementById("canvas");
+﻿var mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+var canvas = document.getElementById("canvas");
 var canvasContainer = document.getElementById("canvasContainer");
 var overlayCanvas = document.getElementById("overlayCanvas");
 var body = document.getElementById("body");
@@ -16,6 +17,10 @@ function updateView() {
     let rect = canvas.getBoundingClientRect();
     boundingLeft = rect.left;
     boundingTop = rect.top;
+    if (Math.min(window.innerWidth, window.innerHeight) > 500)
+        document.documentElement.style.setProperty("--base", Math.min(window.innerWidth, window.innerHeight) / 1000 + "px");
+    else
+        document.documentElement.style.setProperty("--base", Math.min(window.innerWidth, window.innerHeight) / 500 + "px");
 }
 
 
@@ -33,27 +38,50 @@ var posFullContainer = document.getElementById("coordinatesContainer");
 var continuousCheckbox = document.getElementById("continuousCheckbox");
 
 var pathOpener = document.getElementById("pathOpener");
-var pathCloser = document.getElementById("pathCloser");
 var pathDescription = document.getElementById("pathDescription");
 var settings = document.getElementById("settings");
 var paletteSettings = document.getElementById("paletteSettings");
 
-var pathOpenerAnimation = new animation(function (x) { pathOpener.style.top = (x * 10.5 - 7.5) + "vmin" }, 0.3);
+var pathCloser = document.getElementById("pathCloser");
+var settingsOpener = document.getElementById("settingsOpener");
+
+var pathOpenerAnimation = new animation(function (x) { pathOpener.style.top = "calc(" + (x * 125 - 150) + " * var(--base))" }, 0.3);
 var pathDescriptionAnimation = new animation(function (x) {
-    pathDescription.style.height = x * 100 + '%';
-    pathDescription.style.overflowY = (pathDescription.clientHeight == window.innerHeight) ? "auto" : "hidden";
+    pathDescription.style.height = 100 * x + "%";
+    if (x == 0) {
+        pathContainer.style.height = 0;
+        pathCloser.style.display = "none";
+        posFull.style.boxShadow = "";
+    }
 }, 0.3);
-var paletteSettingsAnimation = new animation(function (x) { settings.style.top = (x - 1) * paletteSettings.clientHeight }, 0.4);
+var barAnimation = new animation(function (x) {
+    topBar.style.top = "calc(" + (-305 + 65 * x) + " * var(--base))";
+    settingsOpener.style.top = "calc(" + ((x - 1) * 65 - 10) + " * var(--base))"
+    if (x > 0.8) {
+        pathCloser.style.display = "";
+    }
+    if (x > 0.1)
+        settingsAnimation.open();
+}, 0.5);
+
+var settingsAnimation = new animation(function (x) {
+    topBar.style.top = "calc(" + (240 * (x - 1)) + " * var(--base))";
+    pathContainer.style.maxHeight = (mobile) ? "calc(100vh - " + topBar.style.height + " - 56px)" : "calc(100vh - " + topBar.style.height + ")";
+    pathIterations.style.maxHeight = (mobile) ? "calc(100vh - " + topBar.style.height + " - 100 * var(--base) - 56px)" : "calc(100vh - " + topBar.style.height + " - 100 * var(--base))";
+}, 0.4);
 
 var pointRadius = 8;
 pointLockAnimation = new animation(function (x) { pointRadius = x * 3 + 5; movePoint() }, 0.2);
 pointLockAnimation.frame = 1;
 var mainPathDiv = document.getElementById("mainPathDiv");
 var pathConclusion = document.getElementById("pathConclusion");
+var pathIterations = document.getElementById("pathIterations");
 var displayPathToggler = document.getElementById("displayPathToggler");
 var pathContainer = document.getElementById("path");
+var topBar = document.getElementById("topBar");
+pathContainer.style.maxHeight = (mobile) ? "calc(100vh - 65 * var(--base) - 56px)" : "calc(100vh - 65 * var(--base))";
+pathIterations.style.maxHeight = (mobile) ? "calc(100vh - 65 * var(--base) - 100 * var(--base) - 56px)" : "calc(100vh - 65 * var(--base) - 100 * var(--base))";
 var pathContainerHeight = "";
-var resTimeout = null;
 displayPathToggler.addEventListener("click", function () {
     parameters.showPaths = !parameters.showPaths;
 
@@ -68,25 +96,30 @@ displayPathToggler.addEventListener("click", function () {
     updateParameters();
 });
 
-var moveCoordsTimeout = null;
-
 function openPath()
 {
-    pathDescription.scrollTop = 0;
+    pathCloser.style.pointerEvents = "all";
+    pathIterations.scrollTop = 0;
     pathContainer.style.height = pathContainerHeight;
     pathDescriptionAnimation.open();
-    moveCoordsTimeout = setTimeout(function () { pathDescription.insertBefore(posFull, mainPathDiv) }, 150);
+    pathCloser.style.display = "";
 }
 
 function closePath() {
-    clearTimeout(moveCoordsTimeout);
-    posFullContainer.appendChild(posFull);
     pathDescriptionAnimation.close();
-    moveCoordsTimeout = setTimeout(function () { pathContainer.style.height = 0 }, 300);
+    pathCloser.style.pointerEvents = "none";
+}
+
+
+function openSettings() {
+
+    settingsAnimation.open();
 }
 
 
 var movePointEnabled = !mobile;
+
+
 var point = [0, 0];
 var screenPoint = [0, 0];
 var oldCoords = [];
@@ -126,6 +159,8 @@ function getPreset() {
 
     oldCoords = [setCoordX, setCoordY, setScale];
 
+    drawPalettes(setContinuous);
+
 
     return { x: setCoordX, y: setCoordY, scale: setScale, res: setRes, iters: setIters, continuous: setContinuous, showPaths: showPaths };
 
@@ -135,13 +170,15 @@ var parameters = getPreset();
 
 var confirmedWarning = false;
 
-body.addEventListener("keydown", function () { if (event.keyCode == 13) { parameters.res = res.value; parameters.iters = iters.value; iterations = Number(parameters.iters); drawMandelbrot() } });
+body.addEventListener("keydown", function () { if (event.keyCode == 13) { parameters.res = res.value; parameters.iters = iters.value; iterations = Number(parameters.iters); drawMandelbrot(); generatePath() } });
 
 function updateRes() {
     let v = Number(res.value);
     let r = "";
 
-    if (v < 80)
+    if (v < 30)
+        r = "Very low";
+    else if (v < 80)
         r = "Low";
     else if (v < 140)
         r = "Default";
@@ -156,9 +193,9 @@ function updateRes() {
 updateRes();
 res.addEventListener("input", updateRes);
 res.addEventListener("change", function () { parameters.res = this.value || 100; drawMandelbrot() });
-iters.addEventListener("blur", function () { parameters.iters = this.value || 6; iterations = Number(parameters.iters); drawMandelbrot() });
+iters.addEventListener("blur", function () { parameters.iters = this.value || 6; iterations = Number(parameters.iters); drawMandelbrot(); generatePath() });
 
-continuousCheckbox.addEventListener("input", function () { parameters.continuous = this.checked; generatePath(); drawMandelbrot() });
+continuousCheckbox.addEventListener("input", function () { parameters.continuous = this.checked; drawPalettes(parameters.continuous); generatePath(); drawMandelbrot() });
 
 function fixNumber(string, plusSign)
 {
@@ -300,8 +337,6 @@ function updateParameters() {
 var xMin, xMax, yMin, yMax, width, height = 0;
 var touchStill = null;
 
-var mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
 if (mobile) {
     overlayCanvas.addEventListener("touchstart", startTouch);
     overlayCanvas.addEventListener("touchend", endTouch);
@@ -383,12 +418,23 @@ function moveCursor(e) {
 }
 
 
+var barBackground = document.getElementById("barBackground");
+
+function colorBar() {
+    let iter = (parameters.continuous) ? iterateFSmooth(point[0], point[1]) : iterateF(point[0], point[1]);
+    topBar.style.backgroundColor = barBackground.style.backgroundColor = (iter <= iterations) ? getColor(iter) : "#000000";
+}
+
+
 function movePoint() {
     let x = cursorPosition[0] - point[0];
     let y = cursorPosition[1] - point[1];
     let multiplier = (movePointEnabled) ? pointLockAnimation.frame : 0;
-
     updatePoint(point[0] + x * multiplier, point[1] + y * multiplier);
+
+    colorBar();
+    if (barAnimation.frame == 0)
+        barAnimation.open();
     markPoint();
 }
 
@@ -456,19 +502,13 @@ function generatePath()
     let lastPoint = path[path.length - 2];
     let lastEscaped = (lastPoint.x ** 2 + lastPoint.y ** 2 > 4);
 
-    let minSide = Math.min(window.innerWidth, window.innerHeight);
-    pathContainerHeight = Math.min((0.1675 + 0.1065 * (path.length - 2)) * minSide, window.innerHeight);
-    pathContainerHeight = (pathContainerHeight * 100 / minSide) + "vmin";
+    colorBar();
+
+    pathContainerHeight = "calc(" + (104.5 + 106 * (path.length - 2)) + " * var(--base)";
     if (pathDescriptionAnimation.frame > 0)
         pathContainer.style.height = pathContainerHeight;
 
-    pathDescription.style.overflowY = (pathDescription.clientHeight == window.innerHeight) ? "auto" : "hidden";
-
-    mainPathDiv.style.backgroundColor =
-        (lastEscaped) ?
-        getPathColor(path.length - 2, path[path.length - 3], path[path.length - 2], [point[0], point[1], true])
-            :
-            "black";
+    mainPathDiv.style.backgroundColor = getColor((parameters.continuous) ? iterateFSmooth(point[0], point[1]) : iterateF(point[0], point[1]));
     pathConclusion.innerHTML =
         (lastEscaped) ?
             ("escapes after<br />" + (path.length - 2) + " iteration" + ((path.length - 2 > 1) ? 's.' : '.'))
@@ -480,9 +520,9 @@ function generatePath()
     mainPathDiv.append(displayPathToggler);
 
 
-    let prevPoints = pathDescription.getElementsByClassName("pathPoint");
+    let prevPoints = pathIterations.children;
     while (prevPoints.length > 0)
-        pathDescription.removeChild(prevPoints[0]);
+        pathIterations.removeChild(prevPoints[0]);
     
     for (i = 1; i < path.length - 1; i++) {
         let pointDiv = document.createElement("div");
@@ -494,13 +534,13 @@ function generatePath()
 
 
         let iterNumber = document.createElement("div");
-        iterNumber.style = "font-size: 1.2vmin; text-align: left";
+        iterNumber.className = "pathIter";
         iterNumber.innerHTML = '#' + i + "<br /><br />";
         pointDiv.appendChild(iterNumber);
 
         let equation = document.createElement("div");
         let prevPoint = path[i - 1];
-        equation.style = "font-size: 2em";
+        equation.className = "pathEquation";
         equation.innerHTML =
             '(' + (complexNumToString(prevPoint.x, prevPoint.y, true) || '0') + ")<sup>2</sup> + ("
             + (complexNumToString(point[0], point[1], true) || '0') + ") =<br /><br />";
@@ -508,14 +548,14 @@ function generatePath()
 
         let result = document.createElement("div");
         let currPoint = path[i];
-        result.style = "font-size: 2vmin; font-weight: bold;";
+        result.className = "pathResult";
         if (i == path.length - 2 && lastEscaped)
             result.style.color = "red";
 
         result.innerHTML = complexNumToString(currPoint.x, currPoint.y, true) || '0';
         pointDiv.appendChild(result);
 
-        pathDescription.appendChild(pointDiv);
+        pathIterations.appendChild(pointDiv);
     }
 }
 
@@ -532,24 +572,21 @@ function getPathColor(iteration, prevCoords, currCoords, origCoords = [])
     if (parameters.continuous) {
         if (origCoords.length == 0) {
             let gradient = ctx.createLinearGradient(prevCoords[0], prevCoords[1], currCoords[0], currCoords[1]);
-            gradient.addColorStop(0, (iteration <= parameters.iters) ? getColor(iteration) : "black");
-            gradient.addColorStop(1, (iteration + 1 <= parameters.iters) ? getColor(iteration + 1) : "black");
+            gradient.addColorStop(0, getColor(iteration));
+            gradient.addColorStop(1, getColor(iteration + 1));
             return gradient;
         }
         else {
             if (origCoords[2]) {
                 iteration = iterateFSmooth(origCoords[0], origCoords[1]);
-                if (iteration == -1)
-                    return "black";
-                else
-                    return lerpColor(getColor(Math.floor(iteration)), getColor(Math.ceil(iteration)), iteration % 1)
+                getColor(iteration);
             }
             else
                 return getColor(iteration) + ", " + getColor(iteration + 1)
         }
     }
     else
-        return (iteration <= parameters.iters) ? getColor(iteration) : "black";
+        return getColor(iteration);
 }
 
 function showPath() {
@@ -580,10 +617,11 @@ function showPath() {
     coords = screenPoint;
     for (let i = 1; i < path.length; i++) {
         overlayCtx.beginPath();
+        coords = toScreenCoords(path[i - 1].x, path[i - 1].y);
         overlayCtx.moveTo(coords[0], coords[1]);
         coords = toScreenCoords(path[i].x, path[i].y);
         overlayCtx.lineTo(coords[0], coords[1]);
-        overlayCtx.strokeStyle = getPathColor(i, path[i - 1] || { x: 0, y: 0 }, path[i]);
+        overlayCtx.strokeStyle = getPathColor(i, path[i - 1], path[i]);
         if (i == path.length - 1)
             overlayCtx.setLineDash([15]);
         overlayCtx.stroke();
@@ -632,9 +670,6 @@ var canvasSize = canvas.width / width;
 ctx.fillStyle = "black";
 
 
-var palette = createPalette();
-
-
 var log2 = 1 / Math.log(2);
 
 
@@ -652,7 +687,7 @@ function iterateF(x, y) // f(z)=z²+c, f(f(f(f(f(...f(0)))))...) < ∞
 
 function iterateFSmooth(x, y) {
     let A = x, a = x, b = y, i = 0;
-    while (i++ < iterations - 1 && a * a + b * b < (1 << 16)) {
+    while (i++ < iterations && a * a + b * b < (1 << 16)) {
         a = a * a - b * b + x;
         b = 2 * A * b + y;
         A = a;
@@ -660,11 +695,15 @@ function iterateFSmooth(x, y) {
     if (a * a + b * b <= 4)
         return -1;
     else
-        return i + 1 - Math.log(Math.log(a * a + b * b) / 2 * log2) * log2;
+        return Math.max(i - Math.log(Math.log(a * a + b * b) / 2 * log2) * log2, 0.0001);
 }
 
 var oldPos = { x: 0, y: 0, scale: 2, res: 100 };
 var limitReached = false;
+var backupCanvas = document.createElement("canvas");
+backupCanvas.width = canvas.width;
+backupCanvas.height = canvas.height;
+backupCtx = backupCanvas.getContext("2d");
 
 function drawMandelbrot() {
     // Let's prepare the set's environment.
@@ -684,14 +723,15 @@ function drawMandelbrot() {
 
     limitReached = false;
 
+    backupCtx.drawImage(canvas, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     ctx.fillStyle = "#000000";
+    let x = xMin;
 
     // Now, let's draw it!
-    for (let x = xMin; x < xMax; x += pointSize) {
+    for (; x < xMax; x += pointSize) {
         if (oldX == x || limitReached) {
-            limitReached = true;
             alert("Can't zoom any further.");
             break;
         }
@@ -701,19 +741,18 @@ function drawMandelbrot() {
                 limitReached = true;
                 break;
             }
+
             oldY = y;
-            if (parameters.continuous)
-                drawSmoothPixel(x, y, iterateFSmooth(x, y));
-            else
-                drawPixel(x, y, iterateF(x, y));
+            drawPixel(x, y, (parameters.continuous) ? iterateFSmooth(x, y) : iterateF(x, y));
         }
     }
 
-    if (limitReached) {
+    if (limitReached || oldX == x) {
         parameters.x = oldPos.x;
         parameters.y = oldPos.y;
         parameters.scale = oldPos.scale;
         parameters.res = oldPos.res;
+        ctx.drawImage(backupCanvas, 0, 0);
     }
 
     updateParameters();
@@ -725,11 +764,6 @@ function drawMandelbrot() {
 function drawPixel(x, y, iteration) {
     ctx.fillStyle = (iteration > iterations) ? "#000000" : getColor(iteration);
     ctx.fillRect(Math.round((x - xMin) * canvasSize), Math.round((y - yMin) * canvasSize), pixelSize, pixelSize);
-}
-
-function drawSmoothPixel(x, y, value) {
-    ctx.fillStyle = (value == -1) ? "#000000" : lerpColor(getColor(Math.floor(value)), getColor(Math.ceil(value)), value % 1);
-    ctx.fillRect((x - xMin) * canvasSize, (y - yMin) * canvasSize, pixelSize, pixelSize);
 }
 
 function shiftCoords(e, multiplier = 1) {
@@ -781,8 +815,11 @@ function shiftScale(e) {
 }
 
 drawMandelbrot();
-if (parameters.x != 0 && parameters.y != 0 && mobile) {
+if (parameters.x != 0 && parameters.y != 0) {
     generatePath();
-    pointLockAnimation.close();
-    pathOpenerAnimation.open();
+    barAnimation.open();
+    if (mobile) {
+        pointLockAnimation.close();
+        pathOpenerAnimation.open();
+    }
 }

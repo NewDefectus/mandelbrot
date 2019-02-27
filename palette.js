@@ -1,16 +1,21 @@
-﻿function createPalette() {
-    // I initially generated a color for every pixel before I realized it's much more efficient to have a preset palette with a color for each iteration.
-    let palette = [];
+﻿var programmerPalette = [];
+for (let i = 1; i < 63; i++)
+    programmerPalette.push('#' + ('000000' + Math.round(
+        2 ** 24 * i / 63
+    ).toString(16)).slice(-6));
 
-    let newColor = "";
-    for (let i = 1; i < 63; i++) {
-        newColor = '#' + ('000000' + Math.round(
-            2 ** 24 * i / 63
-        ).toString(16)).slice(-6);
-        palette.push(newColor);
-    }
-    return palette;
-}
+
+var artistPalette = [];
+
+
+var checkerPalette = [];
+
+
+
+
+var palette = programmerPalette;
+
+
 
 
 
@@ -33,5 +38,40 @@ function lerpColor(a, b, amount) {
 
 function getColor(index)
 {
-    return palette[(index - 1 + palette.length) % palette.length];
+    if (index % 1 == 0) {
+        if (index > iterations || index == -1)
+            return "#000000";
+        else
+            return palette[(index - 1 + palette.length) % palette.length];
+    }
+    else
+        return lerpColor(getColor(Math.floor(index) + 1), getColor(Math.ceil(index) + 1), index % 1)
+}
+
+
+
+function drawPalettes(continuous) {
+    for (let canvas of document.getElementsByClassName("paletteCanvas")) {
+        canvas.height = 10;
+        let ctx = canvas.getContext("2d");
+        switch (canvas.id) {
+            case "programmer":
+                canvas.width = 10 * Math.max(programmerPalette.length, 20);
+                canvas.style.width = "calc(" + 2 * canvas.width + " * var(--base))";
+                if (continuous)
+                    for (let i = 0; i < canvas.width; i++) {
+                        ctx.fillStyle = lerpColor(
+                            programmerPalette[Math.floor(i / 10) % programmerPalette.length],
+                            programmerPalette[Math.ceil(i / 10) % programmerPalette.length],
+                            (i / 10) % 1);
+                        ctx.fillRect(i, 0, (i + 1), 10);
+                    }
+                else
+                    for (let i = 0; i < canvas.width / 10; i++) {
+                        ctx.fillStyle = programmerPalette[i % programmerPalette.length];
+                        ctx.fillRect(i * 10, 0, (i + 1) * 10, 10);
+                    }
+                break;
+        }
+    }
 }

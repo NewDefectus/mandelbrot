@@ -1,7 +1,7 @@
 <head>
 	<title>Mandelbrot Set</title>
-	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"/>
-	<link rel="stylesheet" href="style.css">
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, minimal-ui"/>
+	<link rel="stylesheet" href="style.css" />
 </head>
 
 <body id="body" style="font-family: arial; margin: 0; overflow: hidden;">
@@ -11,43 +11,85 @@
         <canvas id="overlayCanvas" width="800" height="800" style="position: absolute; top: 0; transform: translate(-50%, -50%); cursor: none;"></canvas>
     </div>
 
-    <div id="path" style="height: 0">
-        <div id="pathOpener" style="top: -75px">
-            <span onclick="openPath()" style="cursor: pointer">&#8964;</span>
-        </div>
-        <div id="pathDescription" style="height: 0px">
-            <div id="mainPathDiv">
-                <span id="pathConclusion"></span>
-                <div id="changeIters">Limit: <input type="number" class="input" id="iters" min="1" step="1" value="16"></div>
-                <div id="displayPathToggler"></div>
+
+    <div id="topBar" style="position: fixed; top: calc(-305 * var(--base))">
+        <div id="barBackground" style="position: absolute; z-index: 0; width: 100%; height: 100%"></div>
+        <div id="coordinatesContainer" style="position: absolute; width: calc(350 * var(--base)); bottom: 0">
+            <div id="coordinates">
+                <input type="text" maxlength="21" class="coordInput" id="posRe" value="0">&nbsp;<br />
+                <input type="text" maxlength="21" class="coordInput" id="posIm" value="0">i
             </div>
-            <div style="position: absolute; bottom: calc(35 * var(--base)); width: inherit">
-                <div id="pathCloser">
-                    <span onclick="closePath()" style="cursor: pointer">&#8963;</span>
+        </div>
+
+
+
+        <div id="path">
+            <div style="position: relative; bottom: -100%">
+                <div id="pathOpener" style="top: calc(-150 * var(--base))">
+                    <span onclick="openPath()" style="cursor: pointer">&#8964;</span>
+                </div>
+                <div id="pathDescription" style="height: 0px">
+                    <div id="mainPathDiv">
+                        <span id="pathConclusion"></span>
+                        <div id="changeIters">Limit: <input type="number" class="input" id="iters" min="1" step="1" value="16"></div>
+                        <div id="displayPathToggler"></div>
+                    </div>
+                    <div id="pathIterations">
+                    </div>
+                    <div id="pathCloserContainer">
+                        <div id="pathCloser" style="display: none">
+                            <span onclick="closePath()" style="cursor: pointer">&#8963;</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div id="coordinatesContainer">
-        <div id="coordinates">
-            <input type="text" maxlength="21" class="coordInput" id="posRe" value="0">&nbsp;<br />
-            <input type="text" maxlength="21" class="coordInput" id="posIm" value="0">i
+
+        <div id="settings">
+            <div style="position: absolute; top: calc(240 * var(--base)); width: calc(100vw - 80 * var(--base))">
+                <div style="float: left">
+                    Continuous: <input type="checkbox" id="continuousCheckbox"><br />
+                </div>
+                <div id="changeRes">
+                    Resolution: <span id="resolutionHint"></span><br />
+                    <input id="res" value="100" min="1" max="800" type="range" style="width: 98%">
+                </div>
+                <br /><br />
+
+                <table id="palettes" style="position: relative">
+
+                    <tr>
+                        <td><input type="radio" name="palette" id="programmerPalette" checked></td>
+                        <td class="paletteCanvasContainer"><canvas id="programmer" class="paletteCanvas"></canvas></td>
+                    </tr>
+
+                    <tr>
+                        <td><input type="radio" name="palette" id="artistPalette"></td>
+                        <td class="paletteCanvasContainer"><canvas id="artist" class="paletteCanvas"></canvas></td>
+                    </tr>
+
+                    <tr>
+                        <td><input type="radio" name="palette" id="checkerPalette"></td>
+                        <td class="paletteCanvasContainer"><canvas id="checker" class="paletteCanvas"></canvas></td>
+                    </tr>
+
+                    <tr>
+                        <td><input type="radio" name="palette" id="customPalette"></td>
+                        <td class="paletteCanvasContainer"><canvas id="custom" class="paletteCanvas"></canvas></td>
+                    </tr>
+                </table>
+            </div>
+            <div id="settingsOpener">
+                <span style="cursor: pointer" onclick="settingsAnimation.switch()">&#8801;</span>
+            </div>
+
         </div>
+
     </div>
 
 
-    <div id="changeRes">
-        Resolution: <span id="resolutionHint"></span><br />
-        <input id="res" value="100" min="1" max="800" type="range" style="width: 98%">
-    </div>
-
-    <div id="settings" style="top: -400px">
-        <div id="paletteSettings">
-            Continuous: <input type="checkbox" id="continuousCheckbox"><br />
-        </div>
-        <div id="settingsOpener" onclick="paletteSettingsAnimation.switch()">Palette</div>
-    </div>
+    
 
 </body>
 
