@@ -3,6 +3,7 @@
     overscroll-behavior: none;
     --shadow: calc(2 * var(--base)) calc(2 * var(--base)) 0 black;
     --outline: calc(3 * var(--base)) solid black;
+    height: 100%;
 }
 
 body {
@@ -42,7 +43,7 @@ body {
     position: fixed;
     width: 100vw;
     height: calc(305 * var(--base));
-    top: calc(240 * var(--base))
+    top: calc(-305 * var(--base) + var(--topBarOffset))
 }
 
 .coordInput {
@@ -59,7 +60,6 @@ body {
 #pathDescription {
     position: relative;
     width: inherit;
-    background-color: white;
     color: white;
     text-shadow: inherit;
     box-shadow: calc(3 * var(--base)) calc(3 * var(--base)) 0 #000, 0 calc(3 * var(--base)) 0 #000;
@@ -67,6 +67,7 @@ body {
 }
 
 #pathIterations {
+    max-height: 100%;
     overflow-y: scroll
 }
 
@@ -131,7 +132,6 @@ body {
     padding: calc(2 * var(--base));
     height: calc(100 * var(--base));
     font-size: calc(8 * var(--base));
-    border-bottom: calc(2.5 * var(--base)) solid white;
     text-align: center;
     line-height: calc(12 * var(--base));
 }
@@ -180,9 +180,7 @@ body {
 }
 
 #changeRes {
-    float: right;
     right: calc(4 * var(--base));
-    width: calc(300 * var(--base));
 }
 
 #settings {
@@ -190,21 +188,17 @@ body {
     bottom: calc(240 * var(--base));
     height: calc(240 * var(--base));
     font-size: calc(20 * var(--base));
+    text-shadow: var(--shadow);
 }
 
 #settingsOpener {
     position: fixed;
     right: calc(20 * var(--base));
-    top: calc(-75 * var(--base));
     font-size: calc(80 * var(--base));
 }
 
 .paletteCanvas {
+    width: 92vw;
     height: calc(20 * var(--base));
-}
-
-.paletteCanvasContainer {
     outline: calc(2 * var(--base)) solid white;
-    max-width: calc(400 * var(--base));
-    overflow-x: auto
 }

@@ -4,6 +4,8 @@ var canvasContainer = document.getElementById("canvasContainer");
 var overlayCanvas = document.getElementById("overlayCanvas");
 var body = document.getElementById("body");
 
+document.documentElement.style.setProperty("--topBarOffset", "calc(0 * var(--base))");
+
 var boundingLeft = 0, boundingTop = 0;
 
 window.addEventListener("resize", updateView);
@@ -12,7 +14,7 @@ updateView();
 var transScale
 
 function updateView() {
-    transScale = Math.max(window.innerWidth, window.innerHeight) / 800 * 1.0001;
+    transScale = Math.max(window.innerWidth, window.innerHeight) / canvas.width * 1.0001;
     canvasContainer.style.transform = "scale(" + transScale + ", " + transScale + ")";
     let rect = canvas.getBoundingClientRect();
     boundingLeft = rect.left;
@@ -55,19 +57,20 @@ var pathDescriptionAnimation = new animation(function (x) {
     }
 }, 0.3);
 var barAnimation = new animation(function (x) {
-    topBar.style.top = "calc(" + (-305 + 65 * x) + " * var(--base))";
-    settingsOpener.style.top = "calc(" + ((x - 1) * 65 - 10) + " * var(--base))"
+    document.documentElement.style.setProperty("--topBarOffset", "calc(" + 65 * x + " * var(--base))");
+    settingsOpener.style.top = "calc(" + (-75 + 65 * x) + " * var(--base))";
     if (x > 0.8) {
         pathCloser.style.display = "";
     }
-    if (x > 0.1)
-        settingsAnimation.open();
+ //   if (x > 0.1)
+ //       settingsAnimation.open();
 }, 0.5);
 
 var settingsAnimation = new animation(function (x) {
-    topBar.style.top = "calc(" + (240 * (x - 1)) + " * var(--base))";
-    pathContainer.style.maxHeight = (mobile) ? "calc(100vh - " + topBar.style.height + " - 56px)" : "calc(100vh - " + topBar.style.height + ")";
-    pathIterations.style.maxHeight = (mobile) ? "calc(100vh - " + topBar.style.height + " - 100 * var(--base) - 56px)" : "calc(100vh - " + topBar.style.height + " - 100 * var(--base))";
+    document.documentElement.style.setProperty("--topBarOffset", "calc(" + (65 + 240 * x) + " * var(--base))");
+    //topBar.style.top = "calc(" + (240 * (x - 1)) + " * var(--base))";
+    //pathContainer.style.maxHeight = (mobile) ? "calc(100vh - " + topBar.style.top + " - 56px)" : "calc(100vh - " + topBar.style.top + ")";
+    //pathIterations.style.maxHeight = (mobile) ? "calc(100vh - " + topBar.style.top + " - 100 * var(--base) - 56px)" : "calc(100vh - " + topBar.style.top + " - 100 * var(--base))";
 }, 0.4);
 
 var pointRadius = 8;
@@ -79,8 +82,8 @@ var pathIterations = document.getElementById("pathIterations");
 var displayPathToggler = document.getElementById("displayPathToggler");
 var pathContainer = document.getElementById("path");
 var topBar = document.getElementById("topBar");
-pathContainer.style.maxHeight = (mobile) ? "calc(100vh - 65 * var(--base) - 56px)" : "calc(100vh - 65 * var(--base))";
-pathIterations.style.maxHeight = (mobile) ? "calc(100vh - 65 * var(--base) - 100 * var(--base) - 56px)" : "calc(100vh - 65 * var(--base) - 100 * var(--base))";
+pathContainer.style.maxHeight = (mobile) ? "calc(100vh - var(--topBarOffset) - 56px)" : "calc(100vh - var(--topBarOffset))";
+pathIterations.style.maxHeight = "calc(100% - 107 * var(--base))";
 var pathContainerHeight = "";
 displayPathToggler.addEventListener("click", function () {
     parameters.showPaths = !parameters.showPaths;
@@ -180,11 +183,11 @@ function updateRes() {
         r = "Very low";
     else if (v < 80)
         r = "Low";
-    else if (v < 140)
+    else if (v < 160)
         r = "Default";
-    else if(v < 300)
+    else if(v < 350)
         r = "Medium";
-    else if (v < 500)
+    else if (v < 700)
         r = "High";
     else
         r = "Very high";
@@ -504,7 +507,7 @@ function generatePath()
 
     colorBar();
 
-    pathContainerHeight = "calc(" + (104.5 + 106 * (path.length - 2)) + " * var(--base)";
+    pathContainerHeight = "calc(" + (107 + 104 * (path.length - 2)) + " * var(--base)";
     if (pathDescriptionAnimation.frame > 0)
         pathContainer.style.height = pathContainerHeight;
 
@@ -549,8 +552,11 @@ function generatePath()
         let result = document.createElement("div");
         let currPoint = path[i];
         result.className = "pathResult";
-        if (i == path.length - 2 && lastEscaped)
-            result.style.color = "red";
+        if (i == path.length - 2) {
+            pointDiv.style.borderBottom = "none";
+            if (lastEscaped)
+                result.style.color = "red";
+        }
 
         result.innerHTML = complexNumToString(currPoint.x, currPoint.y, true) || '0';
         pointDiv.appendChild(result);

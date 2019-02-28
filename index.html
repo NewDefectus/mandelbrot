@@ -7,12 +7,12 @@
 <body id="body" style="font-family: arial; margin: 0; overflow: hidden;">
 
     <div id="canvasContainer">
-        <canvas id="canvas" width="800" height="800" style="z-index: -1; transform: translate(-50%, -50%)"></canvas>
-        <canvas id="overlayCanvas" width="800" height="800" style="position: absolute; top: 0; transform: translate(-50%, -50%); cursor: none;"></canvas>
+        <canvas id="canvas" width="1000" height="1000" style="z-index: -1; transform: translate(-50%, -50%)"></canvas>
+        <canvas id="overlayCanvas" width="1000" height="1000" style="position: absolute; top: 0; transform: translate(-50%, -50%); cursor: none;"></canvas>
     </div>
 
 
-    <div id="topBar" style="position: fixed; top: calc(-305 * var(--base))">
+    <div id="topBar">
         <div id="barBackground" style="position: absolute; z-index: 0; width: 100%; height: 100%"></div>
         <div id="coordinatesContainer" style="position: absolute; width: calc(350 * var(--base)); bottom: 0">
             <div id="coordinates">
@@ -48,37 +48,18 @@
 
         <div id="settings">
             <div style="position: absolute; top: calc(240 * var(--base)); width: calc(100vw - 80 * var(--base))">
+                <div id="changeRes">
+                    Resolution: <span id="resolutionHint"></span>
+                    <input id="res" value="100" min="1" max="1000" type="range" style="position: absolute; left: calc(200 * var(--base)); width: 45vw">
+                </div>
+                <br />
+
                 <div style="float: left">
                     Continuous: <input type="checkbox" id="continuousCheckbox"><br />
                 </div>
-                <div id="changeRes">
-                    Resolution: <span id="resolutionHint"></span><br />
-                    <input id="res" value="100" min="1" max="800" type="range" style="width: 98%">
-                </div>
-                <br /><br />
+                <br />
 
-                <table id="palettes" style="position: relative">
-
-                    <tr>
-                        <td><input type="radio" name="palette" id="programmerPalette" checked></td>
-                        <td class="paletteCanvasContainer"><canvas id="programmer" class="paletteCanvas"></canvas></td>
-                    </tr>
-
-                    <tr>
-                        <td><input type="radio" name="palette" id="artistPalette"></td>
-                        <td class="paletteCanvasContainer"><canvas id="artist" class="paletteCanvas"></canvas></td>
-                    </tr>
-
-                    <tr>
-                        <td><input type="radio" name="palette" id="checkerPalette"></td>
-                        <td class="paletteCanvasContainer"><canvas id="checker" class="paletteCanvas"></canvas></td>
-                    </tr>
-
-                    <tr>
-                        <td><input type="radio" name="palette" id="customPalette"></td>
-                        <td class="paletteCanvasContainer"><canvas id="custom" class="paletteCanvas"></canvas></td>
-                    </tr>
-                </table>
+                <table id="palettes" style="position: relative"></table>
             </div>
             <div id="settingsOpener">
                 <span style="cursor: pointer" onclick="settingsAnimation.switch()">&#8801;</span>

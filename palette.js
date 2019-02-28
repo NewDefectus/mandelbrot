@@ -1,19 +1,39 @@
-﻿var programmerPalette = [];
-for (let i = 1; i < 63; i++)
-    programmerPalette.push('#' + ('000000' + Math.round(
-        2 ** 24 * i / 63
-    ).toString(16)).slice(-6));
+﻿var palettes = [
 
+    // Palette #1
+    function () {
+        let arr = [];
+        for (let i = 1; i < 63; i++)
+            arr.push('#' + ('000000' + Math.round(
+                2 ** 24 * i / 63
+            ).toString(16)).slice(-6));
+        return arr;
+    }(),
 
-var artistPalette = [];
+    // Palette #2
+    function () {
+        let arr = [];
+        for (let i = 0; i < 100; i++) {
+            if (i < 16)
+                arr.push(lerpColor("#000764", "#206bcb", i / 16));
+            else if (i < 42)
+                arr.push(lerpColor("#206bcb", "#edffff", (i - 16) / 26));
+            else if (i < 64)
+                arr.push(lerpColor("#edffff", "#ffaa00", (i - 42) / 22));
+            else if (i < 86)
+                arr.push(lerpColor("#ffaa00", "#000200", (i - 64) / 22));
+            else
+                arr.push(lerpColor("#000200", "#000764", (i - 86) / 14));
+        }
+        return arr;
+    }(),
 
+    // Palette #3
+    ["#ffffff", "#bbbbbb"],
 
-var checkerPalette = [];
-
-
-
-
-var palette = programmerPalette;
+    // Palette #4
+    []
+];
 
 
 
@@ -50,28 +70,152 @@ function getColor(index)
 
 
 
-function drawPalettes(continuous) {
-    for (let canvas of document.getElementsByClassName("paletteCanvas")) {
-        canvas.height = 10;
-        let ctx = canvas.getContext("2d");
-        switch (canvas.id) {
-            case "programmer":
-                canvas.width = 10 * Math.max(programmerPalette.length, 20);
-                canvas.style.width = "calc(" + 2 * canvas.width + " * var(--base))";
-                if (continuous)
-                    for (let i = 0; i < canvas.width; i++) {
-                        ctx.fillStyle = lerpColor(
-                            programmerPalette[Math.floor(i / 10) % programmerPalette.length],
-                            programmerPalette[Math.ceil(i / 10) % programmerPalette.length],
-                            (i / 10) % 1);
-                        ctx.fillRect(i, 0, (i + 1), 10);
-                    }
-                else
-                    for (let i = 0; i < canvas.width / 10; i++) {
-                        ctx.fillStyle = programmerPalette[i % programmerPalette.length];
-                        ctx.fillRect(i * 10, 0, (i + 1) * 10, 10);
-                    }
-                break;
+var paletteInstance = createPaletteInstance();
+
+function createPaletteInstance() {
+    let paletteInstance = document.createElement("tr");
+    let radioCell = document.createElement("td");
+    let radio = document.createElement("input");
+    radio.type = "radio";
+    radio.name = "palette";
+    radioCell.appendChild(radio);
+    paletteInstance.appendChild(radioCell);
+
+    let paletteCell = document.createElement("td");
+    let paletteCanvas = document.createElement("canvas");
+    paletteCanvas.className = "paletteCanvas";
+    paletteCanvas.width = 600;
+    paletteCanvas.height = 1;
+    paletteCell.appendChild(paletteCanvas);
+    paletteInstance.appendChild(paletteCell);
+
+    paletteInstance.style.height = "calc(40 * var(--base))";
+
+    return paletteInstance;
+}
+
+var table = document.getElementById("palettes");
+var paletteRows = [];
+
+for (let i = 0; i < palettes.length; i++) {
+    let inst = table.appendChild(paletteInstance.cloneNode(true));
+    let radio = inst.getElementsByTagName("input")[0];
+    radio.oninput = function () { palette = palettes[i]; drawMandelbrot(); generatePath(); markPoint() };
+    if (i == 0) radio.checked = true;
+    let canvas = inst.getElementsByClassName("paletteCanvas")[0];
+
+    if (i == palettes.length - 1)
+        makeImageInput(canvas.parentElement, canvas, radio);
+
+    paletteRows.push({
+        palette: palettes[i],
+        canvas: canvas,
+        draw: drawPalette,
+        radio: radio
+    }
+    );
+
+}
+
+var palette = palettes[0];
+
+
+
+function makeImageInput(container, canvas, radio) {
+    container.style.width = canvas.style.width;
+    radio.disabled = true;
+
+    let inputLabel = document.createElement("label");
+    inputLabel.for = "upload";
+
+    let arrow = document.createElement("span");
+    arrow.style = "width: 100%; height: 12.5%; position: absolute; text-align: center; color: white; font-size: calc(30 * var(--base)); cursor: pointer";
+    arrow.innerHTML = "&#8963;";
+
+    let input = document.createElement("input");
+    input.id = "upload";
+    input.type = "file";
+    input.style.display = "none";
+    input.accept = "image/*";
+    input.oninput = getImage;
+
+    inputLabel.appendChild(input);
+    inputLabel.appendChild(arrow);
+    container.insertBefore(inputLabel, canvas);
+}
+
+
+
+
+
+function getImage(e) {
+    if (e.target.files) {
+        let img = new Image;
+        img.onload = function () {
+            URL.revokeObjectURL(img.src);
+            let row = paletteRows[paletteRows.length - 1];
+            let ctx = row.canvas.getContext("2d");
+            ctx.canvas.width = img.width;
+            ctx.drawImage(img, 0, 0, img.width, 1);
+
+            let data = ctx.getImageData(0, 0, img.width, 1).data;
+            console.log(data);
+            let newPalette = [];
+            for (i = 0; i < data.length; i += 4)
+                newPalette.push(
+                    '#' +
+                    ('00' + data[i].toString(16)).slice(-2) +
+                    ('00' + data[i + 1].toString(16)).slice(-2) +
+                    ('00' + data[i + 2].toString(16)).slice(-2)
+                );
+
+            row.radio.disabled = false;
+            row.radio.checked = true;
+            palettes[palettes.length - 1] = newPalette;
+            palette = newPalette;
+
+            generatePath();
+            markPoint();
+            drawMandelbrot();
+            
         }
+        img.crossOrigin = "Anonymous";
+        img.src = URL.createObjectURL(e.target.files[0]);
+    }
+}
+
+
+
+
+
+
+function drawPalette(continuous) {
+    let canvas = this.canvas;
+    let palette = this.palette;
+    let ctx = canvas.getContext("2d");
+
+    let colorSize = ctx.canvas.width / palette.length;
+
+    if (continuous)
+        for (let i = 0; i < canvas.width; i++) {
+            ctx.fillStyle = lerpColor(
+                palette[Math.floor(i / colorSize) % palette.length],
+                palette[Math.ceil(i / colorSize) % palette.length],
+                (i / colorSize) % 1);
+            ctx.fillRect(i, 0, (i + 1), 15);
+        }
+    else
+        for (let i = 0; i < canvas.width / colorSize; i++) {
+            ctx.fillStyle = palette[i % palette.length];
+            ctx.fillRect(i * colorSize, 0, (i + 1) * colorSize, 1);
+        }
+}
+
+
+
+function drawPalettes(continuous) {
+    for (let row of paletteRows) {
+        if(row.palette.length > 0)
+            row.draw(continuous);
     }
 }
