@@ -49,7 +49,9 @@ var settingsOpener = document.getElementById("settingsOpener");
 
 var pathOpenerAnimation = new animation(function (x) { pathOpener.style.top = "calc(" + (x * 125 - 150) + " * var(--base))" }, 0.3);
 var pathDescriptionAnimation = new animation(function (x) {
-    pathDescription.style.height = 100 * x + "%";
+    pathDescription.style.height = "calc(" + x + " * " + pathContainer.style.height + ")";
+    if (x == 1)
+        pathDescription.style.height = "100%";
     if (x == 0) {
         pathContainer.style.height = 0;
         pathCloser.style.display = "none";
@@ -83,7 +85,6 @@ var displayPathToggler = document.getElementById("displayPathToggler");
 var pathContainer = document.getElementById("path");
 var topBar = document.getElementById("topBar");
 pathContainer.style.maxHeight = (mobile) ? "calc(100vh - var(--topBarOffset) - 56px)" : "calc(100vh - var(--topBarOffset))";
-pathIterations.style.maxHeight = "calc(100% - 107 * var(--base))";
 var pathContainerHeight = "";
 displayPathToggler.addEventListener("click", function () {
     parameters.showPaths = !parameters.showPaths;
@@ -378,8 +379,10 @@ var cursorPosition = [parameters.x, parameters.y];
 var touchDistance = null;
 
 
-Touch.prototype.canvasCoords = function () {
-    return toCanvasCoords(this.clientX / transScale - boundingLeft, this.clientY / transScale - boundingTop);
+if (mobile) {
+    Touch.prototype.canvasCoords = function () {
+        return toCanvasCoords(this.clientX / transScale - boundingLeft, this.clientY / transScale - boundingTop);
+    }
 }
 
 function moveCursor(e) {

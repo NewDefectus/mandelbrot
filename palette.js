@@ -100,8 +100,8 @@ var paletteRows = [];
 for (let i = 0; i < palettes.length; i++) {
     let inst = table.appendChild(paletteInstance.cloneNode(true));
     let radio = inst.getElementsByTagName("input")[0];
-    radio.oninput = function () { palette = palettes[i]; drawMandelbrot(); generatePath(); markPoint() };
     if (i == 0) radio.checked = true;
+    radio.oninput = function () { palette = palettes[i]; drawMandelbrot(); generatePath(); markPoint() };
     let canvas = inst.getElementsByClassName("paletteCanvas")[0];
 
     if (i == palettes.length - 1)

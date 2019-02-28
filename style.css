@@ -63,11 +63,11 @@ body {
     color: white;
     text-shadow: inherit;
     box-shadow: calc(3 * var(--base)) calc(3 * var(--base)) 0 #000, 0 calc(3 * var(--base)) 0 #000;
-    overflow: hidden;
+    overflow-y: hidden;
 }
 
 #pathIterations {
-    max-height: 100%;
+    max-height: calc((100vh - var(--topBarOffset)) - 107 * var(--base));
     overflow-y: scroll
 }
 
