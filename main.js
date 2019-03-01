@@ -23,6 +23,11 @@ function updateView() {
         document.documentElement.style.setProperty("--base", Math.min(window.innerWidth, window.innerHeight) / 1000 + "px");
     else
         document.documentElement.style.setProperty("--base", Math.min(window.innerWidth, window.innerHeight) / 500 + "px");
+
+    if (pathContainer) {
+        pathContainer.style.maxHeight = "calc(" + window.innerHeight + "px - var(--topBarOffset)";
+        pathIterations.style.maxHeight = "calc(" + window.innerHeight + "px - var(--topBarOffset) - 107 * var(--base))";
+    }
 }
 
 
@@ -49,13 +54,16 @@ var settingsOpener = document.getElementById("settingsOpener");
 
 var pathOpenerAnimation = new animation(function (x) { pathOpener.style.top = "calc(" + (x * 125 - 150) + " * var(--base))" }, 0.3);
 var pathDescriptionAnimation = new animation(function (x) {
-    pathDescription.style.height = "calc(" + x + " * " + pathContainer.style.height + ")";
+    pathDescription.style.height = "calc(" + x + " * " + pathContainer.clientHeight + "px)";
     if (x == 1)
         pathDescription.style.height = "100%";
     if (x == 0) {
         pathContainer.style.height = 0;
         pathCloser.style.display = "none";
         posFull.style.boxShadow = "";
+        let prevPoints = pathIterations.children;
+        while (prevPoints.length > 0)
+            pathIterations.removeChild(prevPoints[0]);
     }
 }, 0.3);
 var barAnimation = new animation(function (x) {
@@ -64,15 +72,10 @@ var barAnimation = new animation(function (x) {
     if (x > 0.8) {
         pathCloser.style.display = "";
     }
- //   if (x > 0.1)
- //       settingsAnimation.open();
 }, 0.5);
 
 var settingsAnimation = new animation(function (x) {
     document.documentElement.style.setProperty("--topBarOffset", "calc(" + (65 + 240 * x) + " * var(--base))");
-    //topBar.style.top = "calc(" + (240 * (x - 1)) + " * var(--base))";
-    //pathContainer.style.maxHeight = (mobile) ? "calc(100vh - " + topBar.style.top + " - 56px)" : "calc(100vh - " + topBar.style.top + ")";
-    //pathIterations.style.maxHeight = (mobile) ? "calc(100vh - " + topBar.style.top + " - 100 * var(--base) - 56px)" : "calc(100vh - " + topBar.style.top + " - 100 * var(--base))";
 }, 0.4);
 
 var pointRadius = 8;
@@ -84,7 +87,8 @@ var pathIterations = document.getElementById("pathIterations");
 var displayPathToggler = document.getElementById("displayPathToggler");
 var pathContainer = document.getElementById("path");
 var topBar = document.getElementById("topBar");
-pathContainer.style.maxHeight = (mobile) ? "calc(100vh - var(--topBarOffset) - 56px)" : "calc(100vh - var(--topBarOffset))";
+pathContainer.style.maxHeight = "calc(" + window.innerHeight + "px - var(--topBarOffset)";
+pathIterations.style.maxHeight = "calc(" + window.innerHeight + "px - var(--topBarOffset) - 107 * var(--base))";
 var pathContainerHeight = "";
 displayPathToggler.addEventListener("click", function () {
     parameters.showPaths = !parameters.showPaths;
@@ -102,6 +106,7 @@ displayPathToggler.addEventListener("click", function () {
 
 function openPath()
 {
+    generatePath();
     pathCloser.style.pointerEvents = "all";
     pathIterations.scrollTop = 0;
     pathContainer.style.height = pathContainerHeight;
@@ -244,7 +249,8 @@ posRe.addEventListener("input", function ()
     point[0] = Number(this.value) || 0;
     screenPoint[0] = toScreenCoords(Number(this.value) || 0, 0)[0];
     markPoint();
-    generatePath();
+    if (pathDescriptionAnimation.frame > 0)
+        generatePath();
 }
 );
 posIm.addEventListener("input", function ()
@@ -255,7 +261,8 @@ posIm.addEventListener("input", function ()
     point[1] = Number(this.value) || 0;
     screenPoint[1] = toScreenCoords(0, Number(this.value) || 0)[1];
     markPoint();
-    generatePath();
+    if(pathDescriptionAnimation.frame > 0)
+        generatePath();
 }
 );
 
@@ -312,7 +319,8 @@ function updateParameters() {
             updatePoint(point[0], point[1]);
         
         markPoint();
-        generatePath();
+        if (pathDescriptionAnimation.frame > 0)
+            generatePath();
     }
     oldCoords = [parameters.x, parameters.y, parameters.scale];
 
@@ -381,7 +389,7 @@ var touchDistance = null;
 
 if (mobile) {
     Touch.prototype.canvasCoords = function () {
-        return toCanvasCoords(this.clientX / transScale - boundingLeft, this.clientY / transScale - boundingTop);
+        return toCanvasCoords((this.clientX - boundingLeft) / transScale, (this.clientY - boundingTop) / transScale);
     }
 }
 
@@ -398,9 +406,9 @@ function moveCursor(e) {
             let centerPoint = toCanvasCoords((touches[0].clientX + touches[1].clientX) / 2 / transScale - boundingLeft, (touches[0].clientY + touches[1].clientY) / 2 / transScale - boundingTop);
 
             if (touchDistance) {
-                if (tempTouchDistance > touchDistance + 40)
+                if (tempTouchDistance > touchDistance + 30)
                     shiftScale([centerPoint[0], centerPoint[1], -1, tempTouchDistance]);
-                if (tempTouchDistance < touchDistance - 40)
+                if (tempTouchDistance < touchDistance - 30)
                     shiftScale([centerPoint[0], centerPoint[1], 1, tempTouchDistance]);
             }
             else
@@ -469,7 +477,6 @@ function togglePointLock(e) {
         overlayCanvas.style.cursor = (movePointEnabled) ? "none" : "default";
         if (!movePointEnabled)
         {
-            generatePath();
             pointLockAnimation.close();
             pathOpenerAnimation.open();
         }    
@@ -494,7 +501,6 @@ function endTouch(e) {
         shiftCoords(touchStill);
     else {
         movePointEnabled = false;
-        generatePath();
         pointLockAnimation.close();
         pathOpenerAnimation.open();
     }
@@ -804,7 +810,7 @@ function shiftCoords(e, multiplier = 1) {
 function shiftScale(e) {
     // And this is to zoom in on the complex plane, as well as move about it slightly.
     oldPos.scale = parameters.scale;
-    parameters.scale *= 2 ** Math.sign((!mobile) ? e.deltaY : e[2]);
+    parameters.scale *= (!mobile) ? (2 ** Math.sign(e.deltaY)) : (1.5 ** Math.sign(e[2]));
 
     if (!mobile)
         shiftCoords(e, 0.5);
@@ -825,7 +831,7 @@ function shiftScale(e) {
 
 drawMandelbrot();
 if (parameters.x != 0 && parameters.y != 0) {
-    generatePath();
+    colorBar();
     barAnimation.open();
     if (mobile) {
         pointLockAnimation.close();

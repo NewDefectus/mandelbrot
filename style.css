@@ -67,7 +67,6 @@ body {
 }
 
 #pathIterations {
-    max-height: calc((100vh - var(--topBarOffset)) - 107 * var(--base));
     overflow-y: scroll
 }
 
@@ -83,8 +82,9 @@ body {
 
 #pathCloserContainer {
     position: absolute;
-    bottom: 2.4em;
     width: inherit;
+    bottom: calc(40 * var(--base));
+    line-height: calc(70 * var(--base))
 }
 
 #pathCloser {
@@ -195,6 +195,7 @@ body {
     position: fixed;
     right: calc(20 * var(--base));
     font-size: calc(80 * var(--base));
+    line-height: calc(90 * var(--base))
 }
 
 .paletteCanvas {

@@ -129,7 +129,7 @@ function makeImageInput(container, canvas, radio) {
     inputLabel.for = "upload";
 
     let arrow = document.createElement("span");
-    arrow.style = "width: 100%; height: 12.5%; position: absolute; text-align: center; color: white; font-size: calc(30 * var(--base)); cursor: pointer";
+    arrow.style = "width: 100%; height: 12.5%; position: absolute; text-align: center; color: white; font-size: calc(30 * var(--base)); cursor: pointer; line-height: calc(35 * var(--base))";
     arrow.innerHTML = "&#8963;";
 
     let input = document.createElement("input");
@@ -159,6 +159,7 @@ function getImage(e) {
             ctx.drawImage(img, 0, 0, img.width, 1);
 
             let data = ctx.getImageData(0, 0, img.width, 1).data;
+            ctx.canvas.width = 600;
             console.log(data);
             let newPalette = [];
             for (i = 0; i < data.length; i += 4)
@@ -172,12 +173,15 @@ function getImage(e) {
             row.radio.disabled = false;
             row.radio.checked = true;
             palettes[palettes.length - 1] = newPalette;
+            paletteRows[paletteRows.length - 1].palette = newPalette;
             palette = newPalette;
+            drawPalettes();
 
             generatePath();
             markPoint();
             drawMandelbrot();
-            
+
+            e.target.value = "";
         }
         img.crossOrigin = "Anonymous";
         img.src = URL.createObjectURL(e.target.files[0]);
