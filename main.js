@@ -439,7 +439,9 @@ var barBackground = document.getElementById("barBackground");
 
 function colorBar() {
     let iter = (parameters.continuous) ? iterateFSmooth(point[0], point[1]) : iterateF(point[0], point[1]);
-    topBar.style.backgroundColor = barBackground.style.backgroundColor = (iter <= iterations) ? getColor(iter) : "#000000";
+    if(!interpolatingColors)
+        topBar.style.backgroundColor = barBackground.style.backgroundColor = getColor(iter);
+    topBar.iteration = barBackground.iteration = iter;
 }
 
 
@@ -517,13 +519,13 @@ function generatePath()
     let lastPoint = path[path.length - 2];
     let lastEscaped = (lastPoint.x ** 2 + lastPoint.y ** 2 > 4);
 
-    colorBar();
-
     pathContainerHeight = "calc(" + (107 + 104 * (path.length - 2)) + " * var(--base)";
     if (pathDescriptionAnimation.frame > 0)
         pathContainer.style.height = pathContainerHeight;
 
-    mainPathDiv.style.backgroundColor = getColor((parameters.continuous) ? iterateFSmooth(point[0], point[1]) : iterateF(point[0], point[1]));
+    let iteration = (parameters.continuous) ? iterateFSmooth(point[0], point[1]) : iterateF(point[0], point[1]);
+    mainPathDiv.style.backgroundColor = getColor(iteration);
+    mainPathDiv.iteration = iteration;
     pathConclusion.innerHTML =
         (lastEscaped) ?
             ("escapes after<br />" + (path.length - 2) + " iteration" + ((path.length - 2 > 1) ? 's.' : '.'))
@@ -541,7 +543,8 @@ function generatePath()
     
     for (i = 1; i < path.length - 1; i++) {
         let pointDiv = document.createElement("div");
-        pointDiv.className = "pathPoint";
+        pointDiv.className = "pathPoint colored";
+        pointDiv.iteration = i;
         if (parameters.continuous)
             pointDiv.style.backgroundImage = "linear-gradient(" + getPathColor(i, { x: 0, y: 0 }, { x: 0, y: 0 }, [point[0], point[1], false]);
         else
@@ -737,12 +740,14 @@ var transformation = { x: 0, y: 0, scale: 1 };
 
 var intervalDelay = new Date().getTime();
 
-
+var finishedDrawTimeouts = false;
 
 
 function runCallbacks() {
+    finishedDrawTimeouts = true;
     if (drawTimeouts.length > 0) {
-        drawTimeouts[0]();
+        finishedDrawTimeouts = (drawTimeouts[0].t <= 1);
+        drawTimeouts[0].f();
         drawTimeouts.shift();
     }
     
@@ -755,7 +760,7 @@ function runCallbacks() {
                 }
             intervalDelay = new Date().getTime();
         }
-        if (drawTimeouts.length == 0)
+        if (finishedDrawTimeouts)
             setTimeout(runCallbacks, 10);
     }
 }
@@ -832,8 +837,9 @@ function drawMandelbrot(reason) {
 
         if (reason != 0) {
             let point = pointSize;
-            if (reason != 2)
-                drawTimeouts.push(function () {
+            let t = timeoutNumber--;
+            drawTimeouts.push({
+                t: t, f: function () {
                     for (let y = yMin; y < yMax; y += point) {
                         if (oldY == y) {
                             limitReached = true;
@@ -844,26 +850,13 @@ function drawMandelbrot(reason) {
                         drawPixel(x, y, (parameters.continuous) ? iterateFSmooth(x, y) : iterateF(x, y), inf);
                     }
 
-                    if (timeoutNumber-- == 1)
+                    if (reason == 2 || interpolatingColors)
+                        interpolateParameterChange((fullTimeoutNumber - t) / (fullTimeoutNumber - 1));
+
+                    if (t == 1)
                         concludeMandelbrot();
-                });
-            else
-                drawTimeouts.push(function () {
-                    for (let y = yMin; y < yMax; y += point) {
-                        if (oldY == y) {
-                            limitReached = true;
-                            break;
-                        }
-                        oldY = y;
-
-                        drawPixel(x, y, (parameters.continuous) ? iterateFSmooth(x, y) : iterateF(x, y), inf);
-                    }
-
-                    interpolateParameterChange(1 - timeoutNumber / fullTimeoutNumber);
-
-                    if (timeoutNumber-- == 1)
-                        concludeMandelbrot();
-                });
+                }
+            });
             setTimeout(runCallbacks, 0);
         }
         else
@@ -879,7 +872,7 @@ function drawMandelbrot(reason) {
     }
 }
 
-function concludeMandelbrot(shift) {
+function concludeMandelbrot() {
     if (limitReached) {
         parameters.x = oldPos.x;
         parameters.y = oldPos.y;
@@ -895,13 +888,13 @@ function concludeMandelbrot(shift) {
 
 
 function drawPixel(x, y, iteration, inf) {
-    ctx.fillStyle = backupCtx.fillStyle = (iteration > iterations) ? "#000000" : getColor(iteration, false);
+    ctx.fillStyle = backupCtx.fillStyle = (iteration > iterations) ? "#000000" : getColor(iteration);
     let arg0 = Math.round((x - inf.xMin) * inf.canvasSize);
     let arg1 = Math.round((-y + inf.yMax) * inf.canvasSize);
 
-    if (!inf.shift && shifting)
+    if (!inf.shift && shiftMoved)
         backupCtx.fillRect(arg0, arg1, inf.pixelSize, inf.pixelSize);
-    if(inf.shift || !shifting)
+    if (inf.shift || !shiftMoved)
         ctx.fillRect(arg0, arg1, inf.pixelSize, inf.pixelSize);
 }
 

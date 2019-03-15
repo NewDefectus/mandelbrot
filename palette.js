@@ -38,14 +38,26 @@ var palettes = [
 ];
 
 
-
-
+var interpolatingColors = false;
 
 function interpolateParameterChange(frame) {
     if (frame == 0) {
-        // Store on each colored element its original color
-        // when the interpolation started
-        for()
+        for (element of document.getElementsByClassName("colored")) {
+            let hexValue = '#';
+            for (let i of element.style.backgroundColor.split(/[^\d]*[^\d]/g).slice(1, 4))
+                hexValue += ('00' + parseInt(i).toString(16)).slice(-2);
+            element.originColor = hexValue;
+        }
+        interpolatingColors = true;
+    }
+    
+    for (element of document.getElementsByClassName("colored")) {
+        element.style.backgroundColor = lerpColor(element.originColor, palette[(element.iteration - 1 || 0) % palette.length], frame);//"rgb(" + rgbValues.join() + ")";
+    }
+    
+    if (frame == 1) {
+        oldPalette = [].concat(palette);
+        interpolatingColors = false;
     }
 }
 
@@ -66,7 +78,7 @@ function lerpColor(a, b, amount) {
 
 
 
-function getColor(index, interpolate = true)
+function getColor(index)
 {
     if (index % 1 == 0) {
         if (index > iterations || index == -1)
@@ -108,10 +120,10 @@ var table = document.getElementById("palettes");
 var paletteRows = [];
 
 function switchPalette(num) {
+    oldPalette = [].concat(palette);
     palette = palettes[num];
     body.style.backgroundColor = palette[0];
     drawMandelbrot(2);
-    generatePath();
     markPoint();
 }
 
@@ -119,7 +131,7 @@ for (let i = 0; i < palettes.length; i++) {
     let inst = table.appendChild(paletteInstance.cloneNode(true));
     let radio = inst.getElementsByTagName("input")[0];
     if (i == 0) radio.checked = true;
-    radio.oninput = function () { switchPalette(i) };
+    radio.addEventListener("input", function () { switchPalette(i) });
     let canvas = inst.getElementsByClassName("paletteCanvas")[0];
 
     if (i == palettes.length - 1)
@@ -136,6 +148,8 @@ for (let i = 0; i < palettes.length; i++) {
 }
 
 var palette = palettes[0];
+var oldPalette = [].concat(palette);
+var interpolatedPalette = [].concat(palette);
 body.style.backgroundColor = palette[0];
 
 

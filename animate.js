@@ -19,8 +19,8 @@
                     return (me.toOpen) ? 1 : 0;
             });
             me.toOpen = true;
-            //if (drawTimeouts.length == 0 && animateTimeouts.length == 0)
-            runCallbacks();
+            if (finishedDrawTimeouts)
+                runCallbacks();
         };
         this.close = function() {
             animateTimeouts.push(function() {
@@ -36,8 +36,8 @@
                     return (me.toOpen) ? 0 : 1;
             });
             me.toOpen = false;
-            //if (drawTimeouts.length == 0 && animateTimeouts.length == 0)
-            runCallbacks();
+            if (finishedDrawTimeouts)
+                runCallbacks();
         };
         this.switch = function () {
             if (me.toOpen)
