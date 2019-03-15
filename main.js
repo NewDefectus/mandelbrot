@@ -2,7 +2,6 @@
 var canvas = document.getElementById("canvas");
 var canvasContainer = document.getElementById("canvasContainer");
 var overlayCanvas = document.getElementById("overlayCanvas");
-var body = document.getElementById("body");
 
 document.documentElement.style.setProperty("--topBarOffset", "calc(0 * var(--base))");
 
@@ -11,11 +10,11 @@ var boundingLeft = 0, boundingTop = 0;
 window.addEventListener("resize", updateView);
 updateView();
 
-var transScale
+var transScale;
 
 function updateView() {
     transScale = Math.max(window.innerWidth, window.innerHeight) / canvas.width * 1.0001;
-    canvasContainer.style.transform = "scale(" + transScale + ", " + transScale + ")";
+    canvasContainer.style.transform = "scale(" + transScale + ")";
     let rect = canvas.getBoundingClientRect();
     boundingLeft = rect.left;
     boundingTop = rect.top;
@@ -140,7 +139,7 @@ function getPreset() {
 
     let setCoords = (settings.get("coords") || "0").split(/(-*\d.*i*(?=-| ))/);
     let setScale = parseFloat(settings.get("scale") || 2);
-    let setRes = parseInt(settings.get("res") || 100);
+    let setRes = parseInt(settings.get("res") || 200);
     let setIters = parseInt(settings.get("iters") || 16);
     let setContinuous = settings.has("continuous");
     let showPaths = settings.has("path");
@@ -179,21 +178,21 @@ var parameters = getPreset();
 
 var confirmedWarning = false;
 
-body.addEventListener("keydown", function () { if (event.keyCode == 13) { parameters.res = res.value; parameters.iters = iters.value; iterations = Number(parameters.iters); drawMandelbrot(); generatePath() } });
+body.addEventListener("keydown", function () { if (event.keyCode == 13) { parameters.res = res.value; parameters.iters = iters.value; iterations = Number(parameters.iters); drawMandelbrot(2); generatePath() } });
 
 function updateRes() {
     let v = Number(res.value);
     let r = "";
 
-    if (v < 30)
+    if (v < 60)
         r = "Very low";
-    else if (v < 80)
-        r = "Low";
     else if (v < 160)
+        r = "Low";
+    else if (v < 320)
         r = "Default";
-    else if(v < 350)
+    else if(v < 600)
         r = "Medium";
-    else if (v < 700)
+    else if (v < 850)
         r = "High";
     else
         r = "Very high";
@@ -201,10 +200,10 @@ function updateRes() {
 }
 updateRes();
 res.addEventListener("input", updateRes);
-res.addEventListener("change", function () { parameters.res = this.value || 100; drawMandelbrot() });
-iters.addEventListener("blur", function () { parameters.iters = this.value || 6; iterations = Number(parameters.iters); drawMandelbrot(); generatePath() });
+res.addEventListener("change", function () { parameters.res = this.value || 100; drawMandelbrot(2) });
+iters.addEventListener("blur", function () { if (parameters.iters != this.value) { parameters.iters = this.value || 6; iterations = Number(parameters.iters); drawMandelbrot(2); generatePath() } });
 
-continuousCheckbox.addEventListener("input", function () { parameters.continuous = this.checked; drawPalettes(parameters.continuous); generatePath(); drawMandelbrot() });
+continuousCheckbox.addEventListener("input", function () { parameters.continuous = this.checked; drawPalettes(parameters.continuous); generatePath(); drawMandelbrot(2) });
 
 function fixNumber(string, plusSign)
 {
@@ -267,9 +266,11 @@ posIm.addEventListener("input", function ()
 );
 
 function updatePoint(x, y) {
-    posRe.value = ((x >= 0) ? ' ' : '') + x.toFixed(17);
-    posIm.value = ((y >= 0) ? '+' : '') + y.toFixed(17);
-    point = [x, y];
+    if (!shifting) {
+        posRe.value = ((x >= 0) ? ' ' : '') + x.toFixed(17);
+        posIm.value = ((y >= 0) ? '+' : '') + y.toFixed(17);
+        point = [x, y];
+    }
     screenPoint = toScreenCoords(x, y);
 }
 
@@ -355,8 +356,10 @@ if (mobile) {
     overlayCanvas.addEventListener("touchmove", moveCursor);
 }
 else {
-    overlayCanvas.addEventListener("click", shiftCoords);
-    overlayCanvas.addEventListener("wheel", shiftScale);
+    overlayCanvas.addEventListener("mousedown", startShift);
+    overlayCanvas.addEventListener("mousemove", moveShift);
+    overlayCanvas.addEventListener("mouseup", endShift);
+    overlayCanvas.addEventListener("wheel", shiftScale, {passive: true});
     overlayCanvas.addEventListener("mousemove", moveCursor);
     overlayCanvas.addEventListener("contextmenu", togglePointLock);
 }
@@ -713,18 +716,92 @@ function iterateFSmooth(x, y) {
         return Math.max(i - Math.log(Math.log(a * a + b * b) / 2 * log2) * log2, 0.0001);
 }
 
-var oldPos = { x: 0, y: 0, scale: 2, res: 100 };
+var oldPos = { x: parameters.x, y: parameters.y, scale: parameters.scale, res: parameters.res };
 var limitReached = false;
 var backupCanvas = document.createElement("canvas");
 backupCanvas.width = canvas.width;
 backupCanvas.height = canvas.height;
+backupCanvas.style = "position: absolute; z-index: 0; left: 0px; top: 0px";
 backupCtx = backupCanvas.getContext("2d");
 
-function drawMandelbrot() {
-    // Let's prepare the set's environment.
-    pointSize = parameters.scale / parameters.res;
 
-    let center = { x: parameters.x, y: -parameters.y };
+
+var drawTimeouts = [];
+var animateTimeouts = [];
+var timeoutNumber = 0;
+var fullTimeoutNumber = 0;
+
+var transformation = { x: 0, y: 0, scale: 1 };
+
+
+
+var intervalDelay = new Date().getTime();
+
+
+
+
+function runCallbacks() {
+    if (drawTimeouts.length > 0) {
+        drawTimeouts[0]();
+        drawTimeouts.shift();
+    }
+    
+    if (animateTimeouts.length > 0) {
+        if (new Date().getTime() - intervalDelay >= 10) {
+            for (let i = 0; i < animateTimeouts.length; i++)
+                if (animateTimeouts[i]() == 0) {
+                    animateTimeouts.splice(i, 1);
+                    i--;
+                }
+            intervalDelay = new Date().getTime();
+        }
+        if (drawTimeouts.length == 0)
+            setTimeout(runCallbacks, 10);
+    }
+}
+
+
+
+
+
+// Reasons:
+// -1   None
+// 0    Transformation
+// 1    End of transformation
+// 2    Parameter change
+
+function drawMandelbrot(reason) {
+    let transX = transformation.x + scalingShift[0];
+    let transY = transformation.y + scalingShift[1];
+
+    if (reason == 2)
+        backupCtx.drawImage(canvas, 0, 0);
+
+    // Halt the timeouts after the transformation has ended
+    if (reason > 0) {
+        drawTimeouts = [];
+        let scaleOffset = (canvas.width - canvas.width / transformation.scale) / 2;
+        ctx.drawImage(backupCanvas, -transX * canvasSize + scaleOffset, transY * canvasSize + scaleOffset, canvas.width / transformation.scale, canvas.height / transformation.scale);
+        transformation = { x: 0, y: 0, scale: 1 };
+    }
+
+    // Let's prepare the set's environment.
+    let center = { x: parameters.x, y: parameters.y };
+    if (reason == 0) {
+        parameters.x = oldPos.x + transX;
+        parameters.y = oldPos.y + transY;
+        parameters.scale = oldPos.scale * transformation.scale;
+
+        pointSize = parameters.scale / 20;
+        backupCanvas.style.transform = `
+            translateX(${100 * (-0.5 - transX / parameters.scale / 2)}%)
+            translateY(${100 * (-0.5 + transY / parameters.scale / 2)}%)
+            scale(${1 / transformation.scale})
+        `;
+    }
+    else {
+        pointSize = parameters.scale * 2 / parameters.res;
+    }
     width = height = parameters.scale * 2;
     xMin = center.x - width / 2;
     xMax = center.x + width / 2;
@@ -732,37 +809,78 @@ function drawMandelbrot() {
     yMax = center.y + height / 2;
     canvasSize = canvas.width / width;
 
-    pixelSize = Math.ceil(pointSize * canvasSize);
-
     let oldX = null, oldY = null;
 
     limitReached = false;
 
-    backupCtx.drawImage(canvas, 0, 0);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pixelSize = Math.ceil(pointSize * canvasSize);
 
     ctx.fillStyle = "#000000";
-    let x = xMin;
+
+    fullTimeoutNumber = timeoutNumber = width / pointSize;
 
     // Now, let's draw it!
-    for (; x < xMax; x += pointSize) {
+    let inf = { xMin: xMin, yMax: yMax, canvasSize: canvasSize, pixelSize: pixelSize, shift: reason == 0 };
+
+    for (let x = xMin; x < xMax; x += pointSize) {
         if (oldX == x || limitReached) {
             alert("Can't zoom any further.");
+            limitReached = true;
             break;
         }
         oldX = x;
-        for (let y = yMin; y < yMax; y += pointSize) {
-            if (oldY == y) {
-                limitReached = true;
-                break;
-            }
 
-            oldY = y;
-            drawPixel(x, y, (parameters.continuous) ? iterateFSmooth(x, y) : iterateF(x, y));
+        if (reason != 0) {
+            let point = pointSize;
+            if (reason != 2)
+                drawTimeouts.push(function () {
+                    for (let y = yMin; y < yMax; y += point) {
+                        if (oldY == y) {
+                            limitReached = true;
+                            break;
+                        }
+                        oldY = y;
+
+                        drawPixel(x, y, (parameters.continuous) ? iterateFSmooth(x, y) : iterateF(x, y), inf);
+                    }
+
+                    if (timeoutNumber-- == 1)
+                        concludeMandelbrot();
+                });
+            else
+                drawTimeouts.push(function () {
+                    for (let y = yMin; y < yMax; y += point) {
+                        if (oldY == y) {
+                            limitReached = true;
+                            break;
+                        }
+                        oldY = y;
+
+                        drawPixel(x, y, (parameters.continuous) ? iterateFSmooth(x, y) : iterateF(x, y), inf);
+                    }
+
+                    interpolateParameterChange(1 - timeoutNumber / fullTimeoutNumber);
+
+                    if (timeoutNumber-- == 1)
+                        concludeMandelbrot();
+                });
+            setTimeout(runCallbacks, 0);
         }
-    }
+        else
+            for (let y = yMin; y < yMax; y += pointSize) {
+                if (oldY == y) {
+                    limitReached = true;
+                    break;
+                }
+                oldY = y;
 
-    if (limitReached || oldX == x) {
+                drawPixel(x, y, (parameters.continuous) ? iterateFSmooth(x, y) : iterateF(x, y), inf);
+            }
+    }
+}
+
+function concludeMandelbrot(shift) {
+    if (limitReached) {
         parameters.x = oldPos.x;
         parameters.y = oldPos.y;
         parameters.scale = oldPos.scale;
@@ -776,60 +894,157 @@ function drawMandelbrot() {
 
 
 
-function drawPixel(x, y, iteration) {
-    ctx.fillStyle = (iteration > iterations) ? "#000000" : getColor(iteration);
-    ctx.fillRect(Math.round((x - xMin) * canvasSize), Math.round((y - yMin) * canvasSize), pixelSize, pixelSize);
+function drawPixel(x, y, iteration, inf) {
+    ctx.fillStyle = backupCtx.fillStyle = (iteration > iterations) ? "#000000" : getColor(iteration, false);
+    let arg0 = Math.round((x - inf.xMin) * inf.canvasSize);
+    let arg1 = Math.round((-y + inf.yMax) * inf.canvasSize);
+
+    if (!inf.shift && shifting)
+        backupCtx.fillRect(arg0, arg1, inf.pixelSize, inf.pixelSize);
+    if(inf.shift || !shifting)
+        ctx.fillRect(arg0, arg1, inf.pixelSize, inf.pixelSize);
 }
 
-function shiftCoords(e, multiplier = 1) {
-    // This is for navigation around the complex plane.
-    let x = 0, y = 0;
-    if (mobile) {
-        x = e.canvasCoords()[0] - parameters.x;
-        y = e.canvasCoords()[1] - parameters.y;
+
+var shiftCoords = null;
+var shifting = false;
+var shiftMoved = false;
+
+function startShift(e) {
+    if (!shifting) {
+        if (!scaling) {
+            backupCanvas.style.transform = "translate(-50%, -50%)";
+            backupCtx.drawImage(canvas, 0, 0);
+            canvasContainer.insertBefore(backupCanvas, overlayCanvas);
+            oldPos.x = parameters.x;
+            oldPos.y = parameters.y;
+            oldPos.scale = parameters.scale;
+        }
+
+        shiftCoords = (!mobile) ? [
+            e.offsetX,
+            -e.offsetY
+        ]
+            :
+        [
+            e.touches[0].clientX,
+            -e.touches[0].clientY
+        ]
     }
-    else {
-        x = e.offsetX / canvasSize - width / 2;
-        y = (canvas.height - e.offsetY) / canvasSize - height / 2;
-        e.preventDefault();
-    }
-
-    oldPos.x = parameters.x;
-    oldPos.y = parameters.y;
-
-    parameters.x += x * multiplier;
-    parameters.y += y * multiplier;
-
-    posRe.value = parameters.x;
-    posIm.value = parameters.y;
-
-    if (!limitReached)
-        drawMandelbrot();
+    shifting = true;
 }
+
+function moveShift(e) {
+    if (shifting) {
+        shiftMoved = true;
+        if (mobile) {
+            transformation.x = (shiftCoords[0] - e.touches[0].clientX) / canvasSize;
+            transformation.y = (shiftCoords[1] + e.touches[0].clientY) / canvasSize;
+        }
+        else {
+            transformation.x = (shiftCoords[0] - e.offsetX) / canvasSize;
+            transformation.y = (shiftCoords[1] + e.offsetY) / canvasSize;
+        }
+
+        if (!movePointEnabled) {
+            updatePoint(point[0], point[1]);
+            markPoint();
+        }
+        
+        drawMandelbrot(0);
+    }
+}
+
+function endShift() {
+    if (!scaling) {
+        canvasContainer.removeChild(backupCanvas);
+        if (shiftMoved) {
+            drawMandelbrot(1);
+            oldPos.x = parameters.x;
+            oldPos.y = parameters.y;
+            oldPos.scale = parameters.scale;
+        }
+        scalingShift = [0, 0];
+    }
+
+    shiftCoords = null;
+    shiftMoved = false;
+    shifting = false;
+}
+
+var scaling = false;
+var scalingTimeout = null;
+var scalingShift = [0, 0];
 
 function shiftScale(e) {
-    // And this is to zoom in on the complex plane, as well as move about it slightly.
-    oldPos.scale = parameters.scale;
-    parameters.scale *= (!mobile) ? (2 ** Math.sign(e.deltaY)) : (1.5 ** Math.sign(e[2]));
-
-    if (!mobile)
-        shiftCoords(e, 0.5);
-    else {
-        oldPos.x = parameters.x;
-        oldPos.y = parameters.y;
-
-        parameters.x += (e[0] - parameters.x) / 2;
-        parameters.y += (e[1] - parameters.y) / 2;
-
-        posRe.value = parameters.x;
-        posIm.value = parameters.y;
-        if (!limitReached)
-            drawMandelbrot();
-        touchDistance = e[3];
+    // And this is to zoom in and out on the complex plane
+    if (!scaling) {
+        if (!shifting) {
+            backupCanvas.style.transform = "translate(-50%, -50%)";
+            backupCtx.drawImage(canvas, 0, 0);
+            canvasContainer.insertBefore(backupCanvas, overlayCanvas);
+            oldPos.scale = parameters.scale;
+        }
     }
+
+    let scaleCenter = [];
+    let scalar = 1;
+    if (mobile) {
+        scalar = 1.1 ** Math.sign(e[2]);
+        scaleCenter = e.canvasCoords();
+    }
+    else {
+        scalar = 1.1 ** Math.sign(e.deltaY);
+        scaleCenter = toCanvasCoords(e.offsetX, e.offsetY);
+    }
+    transformation.scale *= scalar;
+    scalingShift[0] += (scaleCenter[0] - parameters.x) * (1 - scalar);
+    scalingShift[1] += (scaleCenter[1] - parameters.y) * (1 - scalar);
+
+    canvasSize = canvas.width / (oldPos.scale * transformation.scale * 2);
+
+    if (shifting) {
+        scalingShift[0] += transformation.x;
+        scalingShift[1] += transformation.y;
+        transformation.x = 0;
+        transformation.y = 0;
+        shiftCoords = [e.offsetX, -e.offsetY];
+    }
+    else
+        drawTimeouts = [];
+
+    
+    drawMandelbrot(0);
+    markPoint();
+    scaling = true;
+    clearTimeout(scalingTimeout);
+    scalingTimeout = setTimeout(function () {
+        if (!shifting) {
+            canvasContainer.removeChild(backupCanvas);
+            drawMandelbrot(1);
+            oldPos.x = parameters.x;
+            oldPos.y = parameters.y;
+            oldPos.scale = parameters.scale;
+            scalingShift = [0, 0];
+        }
+        scaling = false;
+    }, 250);
+
+
+    if (movePointEnabled) {
+        let newPoint = toCanvasCoords(screenPoint[0], screenPoint[1]);
+        updatePoint(newPoint[0], newPoint[1]);
+        colorBar();
+    }
+    else
+        updatePoint(point[0], point[1]);
+    markPoint();
+
+    if(mobile)
+        touchDistance = e[3];
 }
 
-drawMandelbrot();
+drawMandelbrot(-1);
 if (parameters.x != 0 && parameters.y != 0) {
     colorBar();
     barAnimation.open();

@@ -1,4 +1,6 @@
-﻿var palettes = [
+﻿var body = document.getElementById("body");
+
+var palettes = [
 
     // Palette #1
     function () {
@@ -39,6 +41,14 @@
 
 
 
+function interpolateParameterChange(frame) {
+    if (frame == 0) {
+        // Store on each colored element its original color
+        // when the interpolation started
+        for()
+    }
+}
+
 
 
 
@@ -56,7 +66,7 @@ function lerpColor(a, b, amount) {
 
 
 
-function getColor(index)
+function getColor(index, interpolate = true)
 {
     if (index % 1 == 0) {
         if (index > iterations || index == -1)
@@ -97,11 +107,19 @@ function createPaletteInstance() {
 var table = document.getElementById("palettes");
 var paletteRows = [];
 
+function switchPalette(num) {
+    palette = palettes[num];
+    body.style.backgroundColor = palette[0];
+    drawMandelbrot(2);
+    generatePath();
+    markPoint();
+}
+
 for (let i = 0; i < palettes.length; i++) {
     let inst = table.appendChild(paletteInstance.cloneNode(true));
     let radio = inst.getElementsByTagName("input")[0];
     if (i == 0) radio.checked = true;
-    radio.oninput = function () { palette = palettes[i]; drawMandelbrot(); generatePath(); markPoint() };
+    radio.oninput = function () { switchPalette(i) };
     let canvas = inst.getElementsByClassName("paletteCanvas")[0];
 
     if (i == palettes.length - 1)
@@ -118,6 +136,7 @@ for (let i = 0; i < palettes.length; i++) {
 }
 
 var palette = palettes[0];
+body.style.backgroundColor = palette[0];
 
 
 
@@ -174,12 +193,9 @@ function getImage(e) {
             row.radio.checked = true;
             palettes[palettes.length - 1] = newPalette;
             paletteRows[paletteRows.length - 1].palette = newPalette;
-            palette = newPalette;
             drawPalettes();
 
-            generatePath();
-            markPoint();
-            drawMandelbrot();
+            switchPalette(palettes.length - 1);
 
             e.target.value = "";
         }
