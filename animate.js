@@ -1,5 +1,7 @@
-﻿class animation {
-    constructor(updateFunction, duration, smoothStep = true) {
+﻿var mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+smoothStep = (x) => 6 * x ** 5 - 15 * x ** 4 + 10 * x ** 3;
+class animation {
+    constructor(updateFunction, duration, smooth = true) {
         this.frame = 0;
         this.toOpen = false;
         let me = this;
@@ -12,15 +14,14 @@
                     me.frame = 1;
                     clearInterval(me.interval);
                 }
-                updateFunction((smoothStep) ? 6 * me.frame ** 5 - 15 * me.frame ** 4 + 10 * me.frame ** 3 : me.frame);
+                updateFunction((smooth) ? smoothStep(me.frame) : me.frame);
                 if (me.frame == 1)
                     return 0;
                 else
                     return (me.toOpen) ? 1 : 0;
             });
             me.toOpen = true;
-            if (finishedDrawTimeouts)
-                runCallbacks();
+            nudgeCallbacks();
         };
         this.close = function() {
             animateTimeouts.push(function() {
@@ -29,15 +30,14 @@
                     me.frame = 0;
                     clearInterval(me.interval);
                 }
-                updateFunction((smoothStep) ? 6 * me.frame ** 5 - 15 * me.frame ** 4 + 10 * me.frame ** 3 : me.frame);
+                updateFunction((smoothStep) ? smoothStep(me.frame) : me.frame);
                 if (me.frame == 0)
                     return 0;
                 else
                     return (me.toOpen) ? 0 : 1;
             });
             me.toOpen = false;
-            if (finishedDrawTimeouts)
-                runCallbacks();
+            nudgeCallbacks();
         };
         this.switch = function () {
             if (me.toOpen)

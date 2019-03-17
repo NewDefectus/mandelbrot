@@ -31,32 +31,62 @@ var palettes = [
     }(),
 
     // Palette #3
-    ["#ffffff", "#bbbbbb"],
+    function () {
+        let arr = [];
+        for (let i = 0; i < 50; i++) {
+            if (i % 2 == 0)
+                arr.push("#ffffff");
+            else
+                arr.push("#bbbbbb");
+        }
+        return arr;
+    }(),
 
-    // Palette #4
+    // Palette #4 (customizable)
     []
 ];
 
 
 var interpolatingColors = false;
 
+function rgbToHex(str) {
+    let hexValue = '#';
+    for (let i of str.split(/[^\d]*[^\d]/g).slice(1, 4))
+        hexValue += ('00' + parseInt(i).toString(16)).slice(-2);
+    return hexValue;
+}
+
 function interpolateParameterChange(frame) {
+    if (frame > 1)
+        frame = 1;
+
     if (frame == 0) {
         for (element of document.getElementsByClassName("colored")) {
-            let hexValue = '#';
-            for (let i of element.style.backgroundColor.split(/[^\d]*[^\d]/g).slice(1, 4))
-                hexValue += ('00' + parseInt(i).toString(16)).slice(-2);
-            element.originColor = hexValue;
+            if (!element.gradient) {
+                element.originColor = rgbToHex(element.style.backgroundColor);
+                element.iteration = (parameters.continuous) ? iterateFSmooth(point[0], point[1]) : iterateF(point[0], point[1]);
+            }
+            else {
+                let colors = element.style.backgroundImage.split(/linear-gradient\(rgb|, rgb/g).slice(1, 3);
+                element.originColor = [rgbToHex(colors[0]), rgbToHex(colors[1])];
+            }
         }
         interpolatingColors = true;
     }
     
     for (element of document.getElementsByClassName("colored")) {
-        element.style.backgroundColor = lerpColor(element.originColor, palette[(element.iteration - 1 || 0) % palette.length], frame);//"rgb(" + rgbValues.join() + ")";
+        if (!element.gradient)
+            element.style.backgroundColor = lerpColor(element.originColor, getColor(element.iteration || 0), smoothStep(frame));
+        else
+            element.style.backgroundImage =
+                "linear-gradient(" +
+                lerpColor(element.originColor[0], getColor(element.iteration || 0), smoothStep(frame)) +
+                ", " +
+                lerpColor(element.originColor[1], getColor(element.iteration + ((parameters.continuous) ? 1 : 0) || 0), smoothStep(frame));
     }
+    drawPalettes(parameters.continuous, frame);
     
     if (frame == 1) {
-        oldPalette = [].concat(palette);
         interpolatingColors = false;
     }
 }
@@ -124,7 +154,6 @@ function switchPalette(num) {
     palette = palettes[num];
     body.style.backgroundColor = palette[0];
     drawMandelbrot(2);
-    markPoint();
 }
 
 for (let i = 0; i < palettes.length; i++) {
@@ -193,7 +222,6 @@ function getImage(e) {
 
             let data = ctx.getImageData(0, 0, img.width, 1).data;
             ctx.canvas.width = 600;
-            console.log(data);
             let newPalette = [];
             for (i = 0; i < data.length; i += 4)
                 newPalette.push(
@@ -207,7 +235,6 @@ function getImage(e) {
             row.radio.checked = true;
             palettes[palettes.length - 1] = newPalette;
             paletteRows[paletteRows.length - 1].palette = newPalette;
-            drawPalettes();
 
             switchPalette(palettes.length - 1);
 
@@ -220,36 +247,39 @@ function getImage(e) {
 
 
 
+var prevFrame = 0;
 
 
-
-function drawPalette(continuous) {
+function drawPalette(continuous, frame) {
     let canvas = this.canvas;
     let palette = this.palette;
     let ctx = canvas.getContext("2d");
 
-    let colorSize = ctx.canvas.width / palette.length;
+    let colorSize = canvas.width / palette.length;
 
-    if (continuous)
-        for (let i = 0; i < canvas.width; i++) {
+    if (continuous) {
+        for (let i = prevFrame * canvas.width; i < frame * canvas.width; i++) {
             ctx.fillStyle = lerpColor(
                 palette[Math.floor(i / colorSize) % palette.length],
                 palette[Math.ceil(i / colorSize) % palette.length],
                 (i / colorSize) % 1);
-            ctx.fillRect(i, 0, (i + 1), 15);
+            ctx.fillRect(i, 0, 1, 1);
         }
-    else
-        for (let i = 0; i < canvas.width / colorSize; i++) {
-            ctx.fillStyle = palette[i % palette.length];
-            ctx.fillRect(i * colorSize, 0, (i + 1) * colorSize, 1);
+    }
+    else {
+        for (let i = prevFrame * canvas.width; i < frame * canvas.width; i++) {
+            ctx.fillStyle = palette[Math.floor(i / colorSize) % palette.length];
+            ctx.fillRect(i, 0, 1, 1);
         }
+    }
 }
 
 
 
-function drawPalettes(continuous) {
+function drawPalettes(continuous, frame) {
     for (let row of paletteRows) {
         if(row.palette.length > 0)
-            row.draw(continuous);
+            row.draw(continuous, frame);
     }
+    prevFrame = (frame != 1) ? frame : 0;
 }
