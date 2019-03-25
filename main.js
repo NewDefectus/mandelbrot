@@ -54,7 +54,10 @@ function generatePath(colordiv = true)
         pointDiv.className = "pathPoint colored";
         pointDiv.iteration = i;
         pointDiv.gradient = true;
-        pointDiv.style.backgroundImage = "linear-gradient(" + getPathColor(i, { x: 0, y: 0 }, { x: 0, y: 0 }, [point[0], point[1], false]);
+        
+        let colorsString = getPathColor(i, { x: 0, y: 0 }, { x: 0, y: 0 }, [point[0], point[1], false]);
+        pointDiv.originColor = colorsString.split(", ");
+        pointDiv.style.backgroundImage = "linear-gradient(" + colorsString;
 
 
         let iterNumber = document.createElement("div");
