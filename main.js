@@ -5,39 +5,46 @@ var overlayCanvas = document.getElementById("overlayCanvas");
 
 var xMin, xMax, yMin, yMax, width, height = 0;
 
+var mainFunction = function (a, b, x, y) { return [a**2-b**2+x, 2*a*b+y] };
+var limitSquared = 4;
+
 function iterateFPath(x, y) {
-    let A = 0, a = 0, b = 0, i = 0;
-    let path = [{ x: 0, y: 0 }];
+    let a = 0, b = 0, i = 0;
+    let path = [];
+    if (!changedMainFunction)
+        path = [{ x: 0, y: 0 }];
+    else {
+        a = x;
+        b = y;
+        path = [{ x: x, y: y }];
+    }
     let keepIterating = true;
     while (i++ < Number(iterations) + 1 && keepIterating) {
-        keepIterating = (a * a + b * b <= 4);
-        a = a * a - b * b + x;
-        b = 2 * A * b + y;
+        keepIterating = a * a + b * b <= limitSquared;
+        [a, b] = mainFunction(a, b, x, y);
         path.push({ x: a, y: b });
-        A = a;
     }
     return path;
 }
 
 
-function generatePath(colordiv = true)
-{
+function generatePath(colordiv = true) {
     let path = iterateFPath(point[0], point[1]);
     let lastPoint = path[path.length - 2];
-    let lastEscaped = (lastPoint.x ** 2 + lastPoint.y ** 2 > 4);
+    let lastEscaped = (lastPoint.x ** 2 + lastPoint.y ** 2 > limitSquared);
 
     pathContainerHeight = "calc(" + (107 + 104 * (path.length - 2)) + " * var(--base)";
     if (pathDescriptionAnimation.frame > 0)
         pathContainer.style.height = pathContainerHeight;
 
     let iteration = (parameters.continuous) ? iterateFSmooth(point[0], point[1]) : iterateF(point[0], point[1]);
-    if(colordiv)
+    if (colordiv)
         mainPathDiv.style.backgroundColor = getColor(iteration);
     mainPathDiv.iteration = iteration;
     pathConclusion.innerHTML =
         (lastEscaped) ?
             ("escapes after<br />" + (path.length - 2) + " iteration" + ((path.length - 2 > 1) ? 's.' : '.'))
-        :
+            :
             ("is in the Mandelbrot set.");
 
     displayPathToggler.innerText = (parameters.showPaths) ? "Hide path" : "Show path";
@@ -48,13 +55,16 @@ function generatePath(colordiv = true)
     let prevPoints = pathIterations.children;
     while (prevPoints.length > 0)
         pathIterations.removeChild(prevPoints[0]);
-    
+
     for (i = 1; i < path.length - 1; i++) {
         let pointDiv = document.createElement("div");
         pointDiv.className = "pathPoint colored";
         pointDiv.iteration = i;
         pointDiv.gradient = true;
-        pointDiv.style.backgroundImage = "linear-gradient(" + getPathColor(i, { x: 0, y: 0 }, { x: 0, y: 0 }, [point[0], point[1], false]);
+
+        let colorsString = getPathColor(i, { x: 0, y: 0 }, { x: 0, y: 0 }, [point[0], point[1], false]);
+        pointDiv.originColor = colorsString.split(", ");
+        pointDiv.style.backgroundImage = "linear-gradient(" + colorsString;
 
 
         let iterNumber = document.createElement("div");
@@ -65,9 +75,12 @@ function generatePath(colordiv = true)
         let equation = document.createElement("div");
         let prevPoint = path[i - 1];
         equation.className = "pathEquation";
-        equation.innerHTML =
-            '(' + (complexNumToString(prevPoint.x, prevPoint.y, true) || '0') + ")<sup>2</sup> + ("
-            + (complexNumToString(point[0], point[1], true) || '0') + ") =<br /><br />";
+        if (!changedMainFunction)
+            equation.innerHTML =
+                '(' + (complexNumToString(prevPoint.x, prevPoint.y, true) || '0') + ")<sup>2</sup> + ("
+                + (complexNumToString(point[0], point[1], true) || '0') + ") =<br /><br />";
+        else
+            equation.innerHTML = "<br /><br />";
         pointDiv.appendChild(equation);
 
         let result = document.createElement("div");
@@ -99,13 +112,12 @@ function showPath() {
         overlayCtx.moveTo(coords[0], coords[1]);
         coords = toScreenCoords(path[i].x, path[i].y);
         overlayCtx.lineTo(coords[0], coords[1]);
-        if (i == path.length - 1)
-        {
+        if (i == path.length - 1) {
             overlayCtx.setLineDash([15]);
             if (i > parameters.iters)
                 overlayCtx.strokeStyle = "white";
         }
-            
+
         overlayCtx.stroke();
     }
 
@@ -128,34 +140,34 @@ function showPath() {
     overlayCtx.setLineDash([0]);
 
     let lastCoords = path[path.length - 2] || { x: 0, y: 0 };
-    if (lastCoords.x ** 2 + lastCoords.y ** 2 > 4) {
+    if (lastCoords.x ** 2 + lastCoords.y ** 2 > limitSquared) {
         let m = ((path[path.length - 3] || { y: 0 }).y - lastCoords.y) / ((path[path.length - 3] || { x: 0 }).x - lastCoords.x);
         let a = m * lastCoords.x - lastCoords.y;
         let b = 1 + m ** 2;
         if ((path[path.length - 3] || { x: 0 }).x - lastCoords.x < 0) {
-            lastCoords.x = (m * a + Math.sqrt(4 * b - a ** 2)) / b;
-            lastCoords.y = (m * Math.sqrt(4 * b - a ** 2) - a) / b;
+            lastCoords.x = (m * a + Math.sqrt(limitSquared * b - a ** 2)) / b;
+            lastCoords.y = (m * Math.sqrt(limitSquared * b - a ** 2) - a) / b;
         }
         else {
-            lastCoords.x = (m * a - Math.sqrt(4 * b - a ** 2)) / b;
-            lastCoords.y = (-m * Math.sqrt(4 * b - a ** 2) - a) / b;
+            lastCoords.x = (m * a - Math.sqrt(limitSquared * b - a ** 2)) / b;
+            lastCoords.y = (-m * Math.sqrt(limitSquared * b - a ** 2) - a) / b;
         }
 
 
-        let screenCoords = toScreenCoords(lastCoords.x, lastCoords.y);
+        let screenCoords = toScreenCoords(0, 0);
         overlayCtx.beginPath();
-        overlayCtx.arc(screenCoords[0], screenCoords[1], 6, 0, 2 * Math.PI, false);
-        overlayCtx.fillStyle = "red";
-        overlayCtx.fill();
-
-        overlayCtx.beginPath();
-        screenCoords = toScreenCoords(0, 0);
-        overlayCtx.arc(screenCoords[0], screenCoords[1], 2 * canvasSize, 0, 2 * Math.PI, false);
-        overlayCtx.strokeStyle = "red";
+        overlayCtx.arc(screenCoords[0], screenCoords[1], Math.sqrt(limitSquared) * canvasSize, 0, 2 * Math.PI, false);
         overlayCtx.setLineDash([10]);
         overlayCtx.lineWidth = 2;
+        overlayCtx.strokeStyle = "red";
         overlayCtx.stroke();
         overlayCtx.setLineDash([0]);
+
+        overlayCtx.beginPath();
+        screenCoords = toScreenCoords(lastCoords.x, lastCoords.y);
+        overlayCtx.arc(screenCoords[0], screenCoords[1], 8, 0, 2 * Math.PI, false);
+        overlayCtx.fillStyle = getColor((parameters.continuous) ? iterateFSmooth(point[0], point[1]) : iterateF(point[0], point[1]));
+        overlayCtx.fill();
     }
 
 }
@@ -169,31 +181,26 @@ ctx.fillStyle = "black";
 
 
 var log2 = 1 / Math.log(2);
+var firstLog = 1 / Math.log(Math.sqrt(limitSquared));
 
 
 
 function iterateF(x, y) // f(z)=z²+c, f(f(f(f(f(...f(0)))))...) < ∞
 {
-    let A = x, a = x, b = y, i = 0;
-    while (i++ < iterations && a * a + b * b <= 4) {
-        a = a * a - b * b + x;
-        b = 2 * A * b + y;
-        A = a;
-    }
+    let a = x, b = y, i = 0;
+    while (i++ < iterations && a * a + b * b <= limitSquared)
+        [a, b] = mainFunction(a, b, x, y);
     return i;
 }
 
 function iterateFSmooth(x, y) {
-    let A = x, a = x, b = y, i = 0;
-    while (i++ < iterations && a * a + b * b < (1 << 16)) {
-        a = a * a - b * b + x;
-        b = 2 * A * b + y;
-        A = a;
-    }
-    if (a * a + b * b <= 4)
+    let a = x, b = y, i = 0;
+    while (i++ < iterations && a * a + b * b < (1 << 16))
+        [a, b] = mainFunction(a, b, x, y);
+    if (a * a + b * b <= limitSquared || !a || !b)
         return -1;
     else
-        return Math.max(i - Math.log(Math.log(a * a + b * b) / 2 * log2) * log2, 0.0001);
+        return Math.max(i - Math.log(Math.log(a * a + b * b) / 2 * firstLog) * log2, 0.0001);
 }
 
 var oldPos = { x: parameters.x, y: parameters.y, scale: parameters.scale, res: parameters.res };
@@ -236,7 +243,7 @@ function runCallbacks() {
 
     if (callbackLoops.length > 0)
         callbackLoops.shift();
-    
+
     if (animateTimeouts.length > 0 || navigatingWithKeyboard) {
         if (new Date().getTime() - intervalDelay >= 10) {
             for (let i = 0; i < animateTimeouts.length; i++)

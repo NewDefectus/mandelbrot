@@ -487,7 +487,7 @@ function getPathColor(iteration, prevCoords, currCoords, origCoords = []) {
             return getColor(iteration) + ", " + getColor(iteration + ((parameters.continuous) ? 1 : 0));
     if (parameters.continuous) {
         if (origCoords.length == 0) {
-            let gradient = ctx.createLinearGradient(prevCoords[0], prevCoords[1], currCoords[0], currCoords[1]);
+            let gradient = ctx.createLinearGradient(prevCoords[0] || 0, prevCoords[1] || 0, currCoords[0] || 0, currCoords[1] || 0);
             gradient.addColorStop(0, getColor(iteration));
             gradient.addColorStop(1, getColor(iteration + 1));
             return gradient;
@@ -501,4 +501,51 @@ function getPathColor(iteration, prevCoords, currCoords, origCoords = []) {
     }
     else
         return getColor(iteration);
+}
+
+
+
+
+// Secret code
+body.addEventListener("keydown", secretCode);
+
+var secretCodeCounter = 0;
+var piBeforeI = false;
+var changedMainFunction = false;
+
+var prevFunctionString = "return [a**2-b**2+x, 2*a*b+y]";
+
+function secretCode(e) {
+    let key = e.key;
+    if (secretCodeCounter == 0 && key == 'e')
+        secretCodeCounter++;
+    else if (secretCodeCounter == 1 && key == 'Shift')
+        secretCodeCounter++;
+    else if (secretCodeCounter == 2 && key == '^')
+        secretCodeCounter++;
+    else if (secretCodeCounter == 3 && key == 'p') {
+        piBeforeI = true;
+        secretCodeCounter++;
+    }
+    else if (secretCodeCounter == 3 && key == 'i') {
+        piBeforeI = false;
+        secretCodeCounter++;
+    }
+    else if (secretCodeCounter == 4 && key == 'i' && piBeforeI)
+        secretCodeCounter++;
+    else if (secretCodeCounter == 4 && key == 'p' && !piBeforeI)
+        secretCodeCounter++;
+    else if (secretCodeCounter == 5 && key == 'i') {
+        secretCodeCounter = 0;
+        prevFunctionString = window.prompt("f(a+bi,x+yi):", prevFunctionString) || prevFunctionString;
+        limitSquared = Number(window.prompt("Limit:", Math.sqrt(limitSquared)))**2;
+        eval("mainFunction = function(a,b,x,y) {" + prevFunctionString + "}");
+        changedMainFunction = (prevFunctionString != "return [a**2-b**2+x, 2*a*b+y]");
+        firstLog = 1 / Math.log(Math.sqrt(limitSquared));
+        if (pathDescriptionAnimation.frame > 0)
+            generatePath(false);
+        drawMandelbrot(2);
+    }
+    else
+        secretCodeCounter = 0;
 }
