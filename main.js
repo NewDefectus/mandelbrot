@@ -61,11 +61,7 @@ function generatePath(colordiv = true) {
         pointDiv.className = "pathPoint colored";
         pointDiv.iteration = i;
         pointDiv.gradient = true;
-<<<<<<< HEAD
 
-=======
-        
->>>>>>> 3851f0df9c631e4242d6b59391666b62fef44689
         let colorsString = getPathColor(i, { x: 0, y: 0 }, { x: 0, y: 0 }, [point[0], point[1], false]);
         pointDiv.originColor = colorsString.split(", ");
         pointDiv.style.backgroundImage = "linear-gradient(" + colorsString;
