@@ -176,22 +176,24 @@ function placeShiftingCanvas() {
 }
 
 function startShift(e) {
-    if (!shiftingWithMouse) {
-        if (overlayCanvas.style.cursor == "grab")
-            overlayCanvas.style.cursor = "grabbing";
-        placeShiftingCanvas();
-        shiftCoords = (!mobile) ? [
-            e.offsetX,
-            -e.offsetY
-        ]
-            :
-        [
-            e.touches[0].clientX,
-            -e.touches[0].clientY
-        ]
+    if (!mobile || !movePointEnabled) {
+        if (!shiftingWithMouse) {
+            if (overlayCanvas.style.cursor == "grab")
+                overlayCanvas.style.cursor = "grabbing";
+            placeShiftingCanvas();
+            shiftCoords = (!mobile) ? [
+                e.offsetX,
+                -e.offsetY
+            ]
+                :
+                [
+                    e.touches[0].clientX,
+                    -e.touches[0].clientY
+                ]
+        }
+        shifting = true;
+        shiftingWithMouse = true;
     }
-    shifting = true;
-    shiftingWithMouse = true;
 }
 
 function moveShift(e) {
@@ -213,24 +215,26 @@ function moveShift(e) {
 }
 
 function endShift() {
-    if (!scaling) {
-        if (backupCanvas.parentNode == canvasContainer)
-            canvasContainer.removeChild(backupCanvas);
-        if (shiftMoved || hasScaled)
-            drawMandelbrot(1);
+    if (!mobile || !movePointEnabled) {
+        if (!scaling) {
+            if (backupCanvas.parentNode == canvasContainer)
+                canvasContainer.removeChild(backupCanvas);
+            if (shiftMoved || hasScaled)
+                drawMandelbrot(1);
+        }
+        if (overlayCanvas.style.cursor == "grabbing")
+            overlayCanvas.style.cursor = "grab";
+
+        shiftCoords = [0, 0];
+        shiftMoved = false;
+        hasScaled = false;
+        shifting = false;
+        shiftingWithMouse = false;
+
+        if (mobile)
+            if (scaling)
+                shiftScale(0);
     }
-    if (overlayCanvas.style.cursor == "grabbing")
-        overlayCanvas.style.cursor = "grab";
-
-    shiftCoords = [0, 0];
-    shiftMoved = false;
-    hasScaled = false;
-    shifting = false;
-    shiftingWithMouse = false;
-
-    if (mobile)
-        if(scaling)
-            shiftScale(0);
 }
 
 var scaling = false;
@@ -241,60 +245,8 @@ var scalingShift = [0, 0];
 
 function shiftScale(e) {
     // And this is to zoom in and out on the complex plane
-    if (mobile && e == 0) {
-        if (!shifting) {
-            if (backupCanvas.parentNode == canvasContainer)
-                canvasContainer.removeChild(backupCanvas);
-            hasScaled = false;
-            drawMandelbrot(1);
-        }
-        scaling = false;
-        scalingWithMouse = false;
-        return 0;
-    }
-    
-    
-    if (!scaling)
-        placeShiftingCanvas();
-
-    let scaleCenter = [];
-    if (mobile) {
-        let scalar = e / transformation.scale;
-        scalingShift[0] += (mobilePinchCenter[0] - parameters.x) * (1 - scalar);
-        scalingShift[1] += (mobilePinchCenter[1] - parameters.y) * (1 - scalar);
-        transformation.scale = e;
-    }
-    else {
-        let scalar = (navKeys[6] ? 1.2 : 1.1) ** Math.sign(e.deltaY);
-        scaleCenter = toCanvasCoords(e.offsetX, e.offsetY);
-        transformation.scale *= scalar;
-        scalingShift[0] += (scaleCenter[0] - parameters.x) * (1 - scalar);
-        scalingShift[1] += (scaleCenter[1] - parameters.y) * (1 - scalar);
-    }
-    
-
-    canvasSize = canvas.width / (oldPos.scale * transformation.scale * 2);
-
-    if (shifting) {
-        if (!mobile) {
-            scalingShift[0] += transformation.x;
-            scalingShift[1] += transformation.y;
-            transformation.x = 0;
-            transformation.y = 0;
-        }
-        shiftCoords = [cursorScreenPosition[0], -cursorScreenPosition[1]];
-    }
-    else
-        drawTimeouts = [];
-
-    
-    drawMandelbrot(0);
-    scaling = true;
-    hasScaled = true;
-    scalingWithMouse = true;
-    if (!mobile) {
-        clearTimeout(scalingTimeout);
-        scalingTimeout = setTimeout(function () {
+    if (!mobile || !movePointEnabled) {
+        if (mobile && e == 0) {
             if (!shifting) {
                 if (backupCanvas.parentNode == canvasContainer)
                     canvasContainer.removeChild(backupCanvas);
@@ -303,15 +255,69 @@ function shiftScale(e) {
             }
             scaling = false;
             scalingWithMouse = false;
-        }, 250);
+            return 0;
+        }
 
-        if (movePointEnabled) {
-            let newPoint = toCanvasCoords(screenPoint[0], screenPoint[1]);
-            updatePoint(newPoint[0], newPoint[1]);
-            colorBar();
+
+        if (!scaling)
+            placeShiftingCanvas();
+
+        let scaleCenter = [];
+        if (mobile) {
+            let scalar = e / transformation.scale;
+            scalingShift[0] += (mobilePinchCenter[0] - parameters.x) * (1 - scalar);
+            scalingShift[1] += (mobilePinchCenter[1] - parameters.y) * (1 - scalar);
+            transformation.scale = e;
+        }
+        else {
+            let scalar = (navKeys[6] ? 1.2 : 1.1) ** Math.sign(e.deltaY);
+            scaleCenter = toCanvasCoords(e.offsetX, e.offsetY);
+            transformation.scale *= scalar;
+            scalingShift[0] += (scaleCenter[0] - parameters.x) * (1 - scalar);
+            scalingShift[1] += (scaleCenter[1] - parameters.y) * (1 - scalar);
+        }
+
+
+        canvasSize = canvas.width / (oldPos.scale * transformation.scale * 2);
+
+        if (shifting) {
+            if (!mobile) {
+                scalingShift[0] += transformation.x;
+                scalingShift[1] += transformation.y;
+                transformation.x = 0;
+                transformation.y = 0;
+            }
+            shiftCoords = [cursorScreenPosition[0], -cursorScreenPosition[1]];
         }
         else
-            updatePoint(point[0], point[1]);
-        markPoint();
+            drawTimeouts = [];
+
+
+        drawMandelbrot(0);
+        scaling = true;
+        hasScaled = true;
+        scalingWithMouse = true;
+        if (!mobile) {
+            clearTimeout(scalingTimeout);
+            scalingTimeout = setTimeout(function () {
+                if (!shifting) {
+                    if (backupCanvas.parentNode == canvasContainer)
+                        canvasContainer.removeChild(backupCanvas);
+                    hasScaled = false;
+                    drawMandelbrot(1);
+                }
+                scaling = false;
+                scalingWithMouse = false;
+            }, 250);
+
+            if (movePointEnabled) {
+                let newPoint = toCanvasCoords(screenPoint[0], screenPoint[1]);
+                updatePoint(newPoint[0], newPoint[1]);
+                colorBar();
+            }
+            else
+                updatePoint(point[0], point[1]);
+            markPoint();
+        }
     }
 }

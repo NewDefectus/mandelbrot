@@ -115,7 +115,7 @@ function openSettings() {
 }
 
 
-var movePointEnabled = true;
+var movePointEnabled = !mobile;
 
 
 var point = [0, 0];
@@ -347,11 +347,11 @@ function updateParameters() {
 }
 
 function toScreenCoords(x, y) {
-    return [(x - parameters.x + width / 2) * canvasSize, (-y + parameters.y + height / 2) * canvasSize];
+    return [(x - parameters.x + parameters.scale) * canvasSize, (-y + parameters.y + parameters.scale) * canvasSize];
 }
 
 function toCanvasCoords(x, y) {
-    return [x / canvasSize + parameters.x - width / 2, -y / canvasSize + parameters.y + height / 2];
+    return [x / canvasSize + parameters.x - parameters.scale, -y / canvasSize + parameters.y + parameters.scale];
 }
 
 var cursorScreenPosition = [canvas.width / 2, canvas.height / 2];
@@ -366,6 +366,7 @@ if (mobile) {
 }
 
 var mobilePinchCenter = [];
+var mobileTouchHasMoved = false;
 
 function moveCursor(e) {
     if (!mobile) {
@@ -376,6 +377,7 @@ function moveCursor(e) {
         ];
     }
     else {
+        mobileTouchHasMoved = true;
         let touches = e.touches;
         if (touches.length > 1) {
             let tempTouchDistance = Math.sqrt((touches[0].clientX - touches[1].clientX) ** 2 + (touches[0].clientY - touches[1].clientY) ** 2);
@@ -442,8 +444,9 @@ function markPoint() {
 
 
 function togglePointLock(e) {
-    if (e.button == 2) {
-        e.preventDefault();
+    if (mobile || e.button == 2) {
+        if(!mobile)
+            e.preventDefault();
         movePointEnabled = !movePointEnabled;
         overlayCanvas.style.cursor = (movePointEnabled) ? "none" : "grab";
         if (!movePointEnabled) {
@@ -463,19 +466,26 @@ function togglePointLock(e) {
 function startTouch(e) {
     cursorScreenPosition = [e.touches[0].clientX, e.touches[0].clientY];
     cursorPosition = e.touches[0].canvasCoords();
-    movePointEnabled = true;
-    pointLockAnimation.open();
-    pathOpenerAnimation.close();
-    closePath();
+    mobileTouchHasMoved = false;
+    //movePointEnabled = true;
+    //pointLockAnimation.open();
+    //pathOpenerAnimation.close();
+    //closePath();
     touchDistance = null;
-    if (barAnimation.frame == 0)
+    if (barAnimation.frame == 0) {
         barAnimation.open();
+        if (!movePointEnabled)
+            pathOpenerAnimation.open();
+    }
 }
 
-function endTouch(e) {
-    movePointEnabled = false;
-    pointLockAnimation.close();
-    pathOpenerAnimation.open();
+function endTouch() {
+    if (!mobileTouchHasMoved) {
+        togglePointLock();
+        //movePointEnabled = false;
+        //pointLockAnimation.close();
+        //pathOpenerAnimation.open();
+    }
 }
 
 
