@@ -411,7 +411,8 @@ drawMandelbrot(-1);
 if (parameters.x != 0 || parameters.y != 0) {
     colorBar();
     barAnimation.open();
-    pathOpenerAnimation.open();
+    if(mobile)
+        pathOpenerAnimation.open();
 }
 
 if (mobile) {
