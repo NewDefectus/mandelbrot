@@ -342,7 +342,7 @@ function updateParameters() {
         + ((parameters.continuous) ? "continuous" : "");
     if (historyString[historyString.length - 1] == '&')
         historyString = historyString.slice(0, -1);
-    //window.history.replaceState({ "pageTitle": "Mandelbrot Set" }, "", historyString);
+    window.history.replaceState({ "pageTitle": "Mandelbrot Set" }, "", historyString);
 
 }
 
