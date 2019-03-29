@@ -105,7 +105,7 @@ For example, c = 2 + 3i:
 > f(-214 - 87i) = (-214 - 87i)<sup>2</sup> + 2 + 3i = 38229 + 37239i
 
 Again, these values just grow bigger and bigger, occasionally becoming negative, although since we're looking at the absolute value
-of these numbers, growing towards negative infinity will be treated the same way as growing towards positive infinity.
+of these numbers, growing towards negative infinity should be regarded the same as growing towards positive infinity.
 
 But if, say, c = 0.2 + 0.3i:
 > f(0) = 0<sup>2</sup> + 0.2 + 0.3i = 0.2 + 0.3i
