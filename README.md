@@ -118,7 +118,7 @@ But if, say, c = 0.2 + 0.3i:
 
 It's a little less certain than when c was -1, but if we plot these points on the complex plane, we actually get a spiral:
 
-<img src="spiral_example.jpg"></img>
+<img src="examples/spiral.jpg"></img>
 
 So we can conclude quite confidently that when c = 0.2 + 0.3i, the sequence does not grow to infinity. Therefore, 0.2 + 0.3i belongs
 to the Mandelbrot set.
