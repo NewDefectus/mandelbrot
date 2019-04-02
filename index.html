@@ -33,7 +33,6 @@
                 <div id="pathDescription" style="height: 0px">
                     <div id="mainPathDiv" class="colored">
                         <span id="pathConclusion"></span>
-                        <div id="changeIters">Limit: <input type="number" class="input" id="iters" min="1" step="1" value="16"></div>
                         <div id="displayPathToggler"></div>
                     </div>
                     <div id="pathIterations">
@@ -49,19 +48,23 @@
 
 
         <div id="settings">
-            <div style="position: absolute; top: calc(240 * var(--base)); width: calc(100vw - 80 * var(--base))">
-                <div id="changeRes">
-                    Resolution: <span id="resolutionHint"></span>
-                    <input id="res" value="200" min="1" max="1000" type="range" style="position: absolute; left: calc(200 * var(--base)); width: 45vw">
-                </div>
-                <br />
-
+            <div style="position: absolute; top: calc(280 * var(--base)); width: calc(100vw - 80 * var(--base))">
                 <div style="float: left">
-                    Continuous: <input type="checkbox" id="continuousCheckbox"><br />
+                    <div id="changeRes">
+                        Resolution: <span id="resolutionHint"></span><br />
+                        <input id="res" value="200" min="1" max="1000" type="range" style="width: 35vw">
+                    </div>
+                    <br />
+                    <div id="changeIters">Iterations: <input type="number" class="input" id="iters" min="1" step="1" value="16"></div>
+                    <br />
+                    <span id="makeJulia">Make Julia set</span>
                 </div>
-                <br />
 
-                <table id="palettes" style="position: relative"></table>
+
+                <div style="float: right; position: relative">
+                    <div id="palettes" style="position: relative; width: 45vw; top: calc(10 * var(--base))"></div>
+                    <span id="continuous">Draw continuously</span>
+                </div>
             </div>
             <div id="settingsOpener">
                 <span style="cursor: pointer" onclick="settingsAnimation.switch()">&#8801;</span>

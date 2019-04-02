@@ -96,7 +96,7 @@ body {
     pointer-events: none
 }
 
-#pathOpener, #pathCloser {
+#pathOpener, #pathCloser, #uploadArrow, #displayPathToggler, #continuous {
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     -khtml-user-select: none;
@@ -153,10 +153,13 @@ body {
 }
 
 #changeIters {
-    position: absolute;
-    bottom: calc(4 * var(--base));
-    text-align: left;
-    font-size: calc(20 * var(--base));
+    font-size: inherit;
+}
+
+#continuous, #makeJulia {
+    text-align: right;
+    cursor: pointer;
+    text-decoration: underline
 }
 
 #iters {
@@ -168,14 +171,12 @@ body {
     background-color: transparent;
     border: none;
     outline: none;
-    border-bottom: calc(1 * var(--base)) solid white;
+    border-bottom: calc(2 * var(--base)) solid white;
 }
 
 #displayPathToggler {
     position: absolute;
     bottom: calc(4 * var(--base));
-    right: 0;
-    text-align: right;
     font-size: calc(20 * var(--base));
     cursor: pointer;
     text-decoration: underline
@@ -189,8 +190,9 @@ body {
     position: relative;
     bottom: calc(240 * var(--base));
     height: calc(240 * var(--base));
-    font-size: calc(20 * var(--base));
+    font-size: calc(25 * var(--base));
     text-shadow: var(--shadow);
+    padding: calc(3 * var(--base));
 }
 
 #settingsOpener {
@@ -201,8 +203,18 @@ body {
     -webkit-tap-highlight-color: rgba(255, 255, 255, 0);
 }
 
-.paletteCanvas {
-    width: 92vw;
+.paletteCanvasContainer {
+    width: 45vw;
     height: calc(20 * var(--base));
     outline: calc(2 * var(--base)) solid white;
+    background-color: black;
+    margin-bottom: calc(20 * var(--base));
+    margin-left: calc(5 * var(--base));
+    box-shadow: black calc(2 * var(--base)) calc(2 * var(--base));
+}
+
+.paletteCanvas {
+    width: 100%;
+    height: 100%;
+    margin-bottom: calc(2 * var(--base))
 }

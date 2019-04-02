@@ -2,6 +2,7 @@
 A user-friendly, satisfying view of the Mandelbrot set fractal, with:
 * Smooth drag-and-drop navigation
 * Paths of the iterating function f<sub>c</sub>(z)
+* Julia sets
 * A customizable palette
 * Support for mobile devices and touchscreens
 
@@ -29,6 +30,7 @@ the imaginary part of the numbers. Combining the two axes, we get a two-dimensio
 </details>
 
 <details><summary><b>The Mandelbrot set</b></summary>
+
 At its core, the Mandelbrot set may be defined as the collection of all complex numbers with a certain special property, explained below:
 
 Let's create a function called f(z). Its input will be *z*, which is some complex number, and its output will be equal to
@@ -131,21 +133,29 @@ which, when plotted on the complex plane, looks more or less like this:
 <img src="icon.png"></img>
 </details>
 
+<details><summary><b>Julia sets</b></summary>
+
+A Julia set is another set of complex numbers, but its definition is different than that of the Mandelbrot set. Instead of having the variable c be any of the numbers
+on the complex plane, c is now some fixed constant that is the same for every point on the plane, and instead of beginning all the sequences from 0, each sequence will
+begin with a different complex number on the plane.
+</details>
+
 ## How to use
 Click/tap and drag the screen to navigate the complex plane. Use the mouse wheel (or pinch) to zoom in and out.
 Keyboard keys may also be used (WASD, arrow keys, plus/minus); hold Shift to accelerate movement.
 
 A white pointer can be moved about the screen, with a configurable coordinate at the top-left corner indicating its position on the plane.
 The pointer may be locked or unlocked in place at any moment by right-clicking (or lightly tapping the screen); this will allow you to
-view the path of the coordinate's function (and its graphical representation on the plane),
-as well as configure the maximum iterations for the page to calculate.
+view the path of the coordinate's function and its graphical representation on the plane.
 
 <img src="examples/path_menu.png"></img>
 
-More settings can be accessed by clicking the icon at the top-right corner; here, you may choose the palette of your liking from
-the 3 default options, or upload a special image file from your PC to be used as a palette
-(first row from the top is read from left to right; vertical height doesn't matter).
-You can also change the resolution and choose whether to color the environment smoothly or discretely.
+Settings can be accessed by clicking the icon at the top-right corner; here, you may configure the resolution of the generated image and the
+maximum number of iterations for the site to calculate, as well as generate a Julia set from the coordinate of the pointer (can be done automatically by pressing J).
+
+You can also choose the palette of your liking from the 3 default options,
+or upload a special image file from your PC to be used as a palette (first row from the top is read from left to right).
+Below the palettes is an option to color the complex plane continuously or discretely.
 
 <img src="examples/palette_settings.png"></img>
 

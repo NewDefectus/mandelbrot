@@ -8,10 +8,35 @@ var xMin, xMax, yMin, yMax, width, height = 0;
 var mainFunction = function (a, b, x, y) { return [a**2-b**2+x, 2*a*b+y] };
 var limitSquared = 4;
 
+var log2 = 1 / Math.log(2);
+var firstLog = 0.5 / Math.log(Math.sqrt(limitSquared));
+
+
+
+function iterateF(x, y) // f(z)=z²+c, f(f(f(f(f(...f(0)))))...) < ∞
+{
+    let a = x, b = y, i = 0;
+    while (i++ < iterations + (juliaSetCoords.length != 0) && a * a + b * b <= limitSquared)
+        [a, b] = mainFunction(a, b, x, y);
+
+    return i;
+}
+
+function iterateFSmooth(x, y) {
+    let a = x, b = y, i = 0;
+    while (i++ < iterations + (juliaSetCoords.length != 0) && a * a + b * b < (1 << 16))
+        [a, b] = mainFunction(a, b, x, y);
+
+    if (a * a + b * b <= limitSquared || !a || !b)
+        return -1;
+    else
+        return Math.max(i - Math.log(Math.log(a * a + b * b) * firstLog) * log2, 0.0001);
+}
+
 function iterateFPath(x, y) {
     let a = 0, b = 0, i = 0;
     let path = [];
-    if (!changedMainFunction)
+    if (!changedMainFunction && juliaSetCoords.length == 0)
         path = [{ x: 0, y: 0 }];
     else {
         a = x;
@@ -24,6 +49,7 @@ function iterateFPath(x, y) {
         [a, b] = mainFunction(a, b, x, y);
         path.push({ x: a, y: b });
     }
+
     return path;
 }
 
@@ -43,9 +69,12 @@ function generatePath(colordiv = true) {
     mainPathDiv.iteration = iteration;
     pathConclusion.innerHTML =
         (lastEscaped) ?
-            ("escapes after<br />" + (path.length - 2) + " iteration" + ((path.length - 2 > 1) ? 's.' : '.'))
+            (path.length > 2) ?
+                ("escapes after<br />" + (path.length - 2) + " iteration" + ((path.length > 3) ? 's.' : '.'))
+                :
+                "is outside the limit (" + Math.sqrt(limitSquared) + ")."
             :
-            ("is in the Mandelbrot set.");
+            ("is in " + ((juliaSetCoords.length == 0) ? "the Mandelbrot" : "this Julia") + " set.");
 
     displayPathToggler.innerText = (parameters.showPaths) ? "Hide path" : "Show path";
 
@@ -59,7 +88,7 @@ function generatePath(colordiv = true) {
     for (i = 1; i < path.length - 1; i++) {
         let pointDiv = document.createElement("div");
         pointDiv.className = "pathPoint colored";
-        pointDiv.iteration = i;
+        pointDiv.iteration = i + (juliaSetCoords.length != 0);
         pointDiv.gradient = true;
 
         let colorsString = getPathColor(i, { x: 0, y: 0 }, { x: 0, y: 0 }, [point[0], point[1], false]);
@@ -78,7 +107,7 @@ function generatePath(colordiv = true) {
         if (!changedMainFunction)
             equation.innerHTML =
                 '(' + (complexNumToString(prevPoint.x, prevPoint.y, true) || '0') + ")<sup>2</sup> + ("
-                + (complexNumToString(point[0], point[1], true) || '0') + ") =<br /><br />";
+                + ((juliaSetCoords.length != 0) ? (complexNumToString(juliaSetCoords[0], juliaSetCoords[1], true)) : (complexNumToString(point[0], point[1], true)) || '0') + ") =<br /><br />";
         else
             equation.innerHTML = "<br /><br />";
         pointDiv.appendChild(equation);
@@ -140,7 +169,7 @@ function showPath() {
     overlayCtx.setLineDash([0]);
 
     let lastCoords = path[path.length - 2] || { x: 0, y: 0 };
-    if (lastCoords.x ** 2 + lastCoords.y ** 2 > limitSquared) {
+    if (lastCoords.x ** 2 + lastCoords.y ** 2 > limitSquared && path.length > 2) {
         let m = ((path[path.length - 3] || { y: 0 }).y - lastCoords.y) / ((path[path.length - 3] || { x: 0 }).x - lastCoords.x);
         let a = m * lastCoords.x - lastCoords.y;
         let b = 1 + m ** 2;
@@ -178,30 +207,6 @@ var pointSize, pixelSize = 0;
 var iterations = parameters.iters;
 var canvasSize = canvas.width / width;
 ctx.fillStyle = "black";
-
-
-var log2 = 1 / Math.log(2);
-var firstLog = 1 / Math.log(Math.sqrt(limitSquared));
-
-
-
-function iterateF(x, y) // f(z)=z²+c, f(f(f(f(f(...f(0)))))...) < ∞
-{
-    let a = x, b = y, i = 0;
-    while (i++ < iterations && a * a + b * b <= limitSquared)
-        [a, b] = mainFunction(a, b, x, y);
-    return i;
-}
-
-function iterateFSmooth(x, y) {
-    let a = x, b = y, i = 0;
-    while (i++ < iterations && a * a + b * b < (1 << 16))
-        [a, b] = mainFunction(a, b, x, y);
-    if (a * a + b * b <= limitSquared || !a || !b)
-        return -1;
-    else
-        return Math.max(i - Math.log(Math.log(a * a + b * b) / 2 * firstLog) * log2, 0.0001);
-}
 
 var oldPos = { x: parameters.x, y: parameters.y, scale: parameters.scale, res: parameters.res };
 var limitReached = false;
@@ -397,7 +402,7 @@ function concludeMandelbrot() {
 
 
 function drawPixel(x, y, iteration, inf) {
-    ctx.fillStyle = backupCtx.fillStyle = (iteration > iterations) ? "#000000" : getColor(iteration);
+    ctx.fillStyle = backupCtx.fillStyle = (iteration > iterations + (juliaSetCoords.length != 0)) ? "#000000" : getColor(iteration);
     let arg0 = Math.round((x - inf.xMin) * inf.canvasSize);
     let arg1 = Math.round((-y + inf.yMax) * inf.canvasSize);
 

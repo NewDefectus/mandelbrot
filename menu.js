@@ -32,7 +32,10 @@ var posRe = document.getElementById("posRe");
 var posIm = document.getElementById("posIm");
 var posFull = document.getElementById("coordinates");
 var posFullContainer = document.getElementById("coordinatesContainer");
-var continuousCheckbox = document.getElementById("continuousCheckbox");
+var continuousSetting = document.getElementById("continuous");
+
+var juliaSetCoords = [];
+var juliaMaker = document.getElementById("makeJulia");
 
 var pathOpener = document.getElementById("pathOpener");
 var pathDescription = document.getElementById("pathDescription");
@@ -65,7 +68,7 @@ var barAnimation = new animation(function (x) {
 }, 0.5);
 
 var settingsAnimation = new animation(function (x) {
-    document.documentElement.style.setProperty("--topBarOffset", "calc(" + (65 + 240 * x) + " * var(--base))");
+    document.documentElement.style.setProperty("--topBarOffset", "calc(" + (65 + 200 * x) + " * var(--base))");
 }, 0.4);
 
 var pointRadius = 8;
@@ -93,6 +96,28 @@ displayPathToggler.addEventListener("click", function () {
     markPoint();
     updateParameters();
 });
+
+juliaMaker.addEventListener("click", makeJulia);
+
+function makeJulia() {
+    if (juliaSetCoords.length == 0 || point[0] != juliaSetCoords[0] || point[1] != juliaSetCoords[1]) {
+        juliaSetCoords = point;
+        juliaMaker.innerText = "Make Mandelbrot set";
+
+        let staticX = juliaSetCoords[0], staticY = juliaSetCoords[1];
+        mainFunction = function (a, b, x, y) { return [a ** 2 - b ** 2 + staticX, 2 * a * b + staticY] };
+    }
+    else {
+        juliaSetCoords = [];
+        juliaMaker.innerText = "Make Julia set";
+
+        mainFunction = function (a, b, x, y) { return [a ** 2 - b ** 2 + x, 2 * a * b + y] };
+    }
+    if (pathDescriptionAnimation.frame > 0)
+        generatePath(false);
+    markPoint();
+    drawMandelbrot(2);
+}
 
 function openPath() {
     generatePath();
@@ -147,7 +172,7 @@ function getPreset() {
 
     res.value = setRes;
     iters.value = setIters;
-    continuousCheckbox.checked = setContinuous;
+    continuousSetting.innerText = (setContinuous) ? "Draw discretely" : "Draw continuously";
     posRe.value = ((setCoordX >= 0) ? ' ' : '') + setCoordX.toFixed(17);
     posIm.value = ((setCoordY >= 0) ? '+' : '') + setCoordY.toFixed(17);
     point = [setCoordX, setCoordY];
@@ -174,6 +199,8 @@ body.addEventListener("keydown", function () {
         if(pathDescriptionAnimation.frame > 0)
             generatePath(false);
     }
+    if (event.keyCode == 74)
+        makeJulia();
 });
 
 function updateRes() {
@@ -199,7 +226,7 @@ res.addEventListener("input", updateRes);
 res.addEventListener("change", function () { parameters.res = this.value || 100; drawMandelbrot(2) });
 iters.addEventListener("blur", function () { if (parameters.iters != this.value) { parameters.iters = this.value || 6; iterations = Number(parameters.iters); drawMandelbrot(2); generatePath(false) } });
 
-continuousCheckbox.addEventListener("input", function () { parameters.continuous = this.checked; drawMandelbrot(2) });
+continuousSetting.addEventListener("click", function () { parameters.continuous = !parameters.continuous; this.innerText = (parameters.continuous) ? "Draw discretely" : "Draw continuously"; drawMandelbrot(2) });
 
 function fixNumber(string, plusSign) {
     let re = new RegExp("(?![\\d|\\-|" + plusSign + "|.]).", "g");
@@ -310,7 +337,7 @@ function updateParameters() {
     iters.value = parameters.iters;
     iterations = Number(parameters.iters);
     res.value = parameters.res;
-    continuousCheckbox.checked = parameters.continuous;
+    continuousSetting.innerText = (parameters.continuous) ? "Draw discretely" : "Draw continuously";
 
     if (oldCoords[0] != parameters.x || oldCoords[1] != parameters.y || oldCoords[2] != parameters.scale) {
         if (movePointEnabled) {
@@ -422,12 +449,26 @@ function movePoint() {
     let multiplier = (movePointEnabled) ? pointLockAnimation.frame : 0;
     updatePoint(point[0] + x * multiplier, point[1] + y * multiplier);
 
+    if (x != juliaSetCoords[0] || y != juliaSetCoords[1]) {
+        juliaMaker.innerText = "Make Julia set";
+    }
+    else {
+        juliaMaker.innerText = "Make Mandelbrot set";
+    }
+
     colorBar();
     markPoint();
 }
 
 function markPoint() {
     overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+    if (juliaSetCoords.length != 0) {
+        overlayCtx.beginPath();
+        let screenJ = toScreenCoords(juliaSetCoords[0], juliaSetCoords[1]);
+        overlayCtx.arc(screenJ[0], screenJ[1], 6, 0, 2 * Math.PI, false);
+        overlayCtx.fillStyle = "rgba(66, 134, 244, 0.6)";
+        overlayCtx.fill();
+    }
     if (parameters.showPaths)
         showPath();
     overlayCtx.beginPath();
@@ -490,11 +531,12 @@ function endTouch() {
 
 
 function getPathColor(iteration, prevCoords, currCoords, origCoords = []) {
+    iteration += (juliaSetCoords.length != 0);
     prevCoords = toScreenCoords(prevCoords.x, prevCoords.y);
     currCoords = toScreenCoords(currCoords.x, currCoords.y);
     if (origCoords.length > 0)
         if (!origCoords[2])
-            return getColor(iteration) + ", " + getColor(iteration + ((parameters.continuous) ? 1 : 0));
+            return getColor(iteration) + ", " + getColor(iteration + parameters.continuous);
     if (parameters.continuous) {
         if (origCoords.length == 0) {
             let gradient = ctx.createLinearGradient(prevCoords[0] || 0, prevCoords[1] || 0, currCoords[0] || 0, currCoords[1] || 0);
@@ -551,7 +593,7 @@ function secretCode(e) {
         limitSquared = Number(window.prompt("Limit:", Math.sqrt(limitSquared)))**2;
         eval("mainFunction = function(a,b,x,y) {" + prevFunctionString + "}");
         changedMainFunction = (prevFunctionString != "return [a**2-b**2+x, 2*a*b+y]");
-        firstLog = 1 / Math.log(Math.sqrt(limitSquared));
+        firstLog = 0.5 / Math.log(Math.sqrt(limitSquared));
         if (pathDescriptionAnimation.frame > 0)
             generatePath(false);
         drawMandelbrot(2);

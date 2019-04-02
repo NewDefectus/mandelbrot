@@ -2,15 +2,18 @@
     overlayCanvas.addEventListener("touchstart", startShift, { passive: true });
     overlayCanvas.addEventListener("touchmove", moveShift, { passive: true });
     overlayCanvas.addEventListener("touchend", endShift);
+    overlayCanvas.addEventListener("mouseleave", endShift);
 
     overlayCanvas.addEventListener("touchstart", startTouch, { passive: true } );
     overlayCanvas.addEventListener("touchend", endTouch);
+    overlayCanvas.addEventListener("mouseleave", endTouch);
     overlayCanvas.addEventListener("touchmove", moveCursor, { passive: true });
 }
 else {
     overlayCanvas.addEventListener("mousedown", startShift);
     overlayCanvas.addEventListener("mousemove", moveShift);
     overlayCanvas.addEventListener("mouseup", endShift);
+    overlayCanvas.addEventListener("mouseleave", endShift);
     overlayCanvas.addEventListener("wheel", shiftScale, { passive: true });
     body.addEventListener("keydown", startNavWithKeyboard);
     body.addEventListener("keyup", endNavWithKeyboard);
