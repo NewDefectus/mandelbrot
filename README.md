@@ -151,7 +151,7 @@ view the path of the coordinate's function and its graphical representation on t
 <img src="examples/path_menu.png"></img>
 
 Settings can be accessed by clicking the icon at the top-right corner; here, you may configure the resolution of the generated image and the
-maximum number of iterations for the site to calculate, as well as generate a Julia set from the coordinate of the pointer (can be done automatically by pressing J).
+maximum number of iterations for the site to calculate, as well as generate a Julia set from the coordinate of the pointer (this can also be done by pressing J).
 
 You can also choose the palette of your liking from the 3 default options,
 or upload a special image file from your PC to be used as a palette (first row from the top is read from left to right).
