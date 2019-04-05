@@ -13,10 +13,9 @@ function updateView() {
     let rect = canvas.getBoundingClientRect();
     boundingLeft = rect.left;
     boundingTop = rect.top;
-    if (Math.min(window.innerWidth, window.innerHeight) > 500)
-        document.documentElement.style.setProperty("--base", Math.min(window.innerWidth, window.innerHeight) / 1000 + "px");
-    else
-        document.documentElement.style.setProperty("--base", Math.min(window.innerWidth, window.innerHeight) / 500 + "px");
+
+    let minSize = Math.min(window.innerWidth, window.innerHeight) / 500;
+    document.documentElement.style.setProperty("--base", minSize / ((minSize > 1) ? 2 : 1) + "px");
 
     if (pathContainer) {
         pathContainer.style.maxHeight = "calc(" + window.innerHeight + "px - var(--topBarOffset)";

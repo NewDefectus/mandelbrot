@@ -74,7 +74,7 @@ function generatePath(colordiv = true) {
                 :
                 "is outside the limit (" + Math.sqrt(limitSquared) + ")."
             :
-            ("is in " + ((juliaSetCoords.length == 0) ? "the Mandelbrot" : "this Julia") + " set.");
+            (!changedMainFunction) ? ("is in " + ((juliaSetCoords.length == 0) ? "the Mandelbrot" : "this Julia") + " set.") : "does not escape.";
 
     displayPathToggler.innerText = (parameters.showPaths) ? "Hide path" : "Show path";
 

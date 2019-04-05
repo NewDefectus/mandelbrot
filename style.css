@@ -67,7 +67,8 @@ body {
 }
 
 #pathIterations {
-    overflow-y: scroll
+    overflow-y: scroll;
+    overflow-y: overlay
 }
 
 #pathOpener {
@@ -204,7 +205,7 @@ body {
 }
 
 .paletteCanvasContainer {
-    width: 45vw;
+    width: 40vw;
     height: calc(20 * var(--base));
     outline: calc(2 * var(--base)) solid white;
     background-color: black;
@@ -216,5 +217,5 @@ body {
 .paletteCanvas {
     width: 100%;
     height: 100%;
-    margin-bottom: calc(2 * var(--base))
+    margin-bottom: calc(4 * var(--base))
 }
