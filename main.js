@@ -209,7 +209,6 @@ var canvasSize = canvas.width / width;
 ctx.fillStyle = "black";
 
 var oldPos = { x: parameters.x, y: parameters.y, scale: parameters.scale, res: parameters.res };
-var limitReached = false;
 var backupCanvas = document.createElement("canvas");
 backupCanvas.width = canvas.width;
 backupCanvas.height = canvas.height;
@@ -264,10 +263,6 @@ function runCallbacks() {
             callbackLoops.push(setTimeout(runCallbacks, 10));
     }
 }
-
-
-
-
 
 // Reasons:
 // -1   None
@@ -324,10 +319,6 @@ function drawMandelbrot(reason) {
     yMax = center.y + height / 2;
     canvasSize = canvas.width / width;
 
-    let oldX = null, oldY = null;
-
-    limitReached = false;
-
     pixelSize = Math.ceil(pointSize * canvasSize);
 
     ctx.fillStyle = "#000000";
@@ -337,65 +328,44 @@ function drawMandelbrot(reason) {
     // Now, let's draw it!
     let inf = { xMin: xMin, yMax: yMax, canvasSize: canvasSize, pixelSize: pixelSize, shift: reason == 0 };
 
-    for (let x = xMin; x < xMax; x += pointSize) {
-        if (oldX == x || limitReached) {
-            alert("Can't zoom any further.");
-            limitReached = true;
-            break;
-        }
-        oldX = x;
+    let nX = 0;
 
+    for (let x = xMin; x < xMax; x = xMin + pointSize * (nX++)) {
+        let nY = 0;
         if (reason != 0) {
             let pointS = pointSize;
             let t = timeoutNumber--;
-            drawTimeouts.push({
-                t: t, f: function () {
-                    for (let y = yMin; y < yMax; y += pointS) {
-                        if (oldY == y) {
-                            limitReached = true;
-                            break;
-                        }
-                        oldY = y;
+            if (reason == 2 || interpolatingColors)
+                drawTimeouts.push({
+                    t: t, f: function () {
+                        for (let y = yMin; y < yMax; y = yMin + pointS * (nY++))
+                            drawPixel(x, y, (parameters.continuous) ? iterateFSmooth(x, y) : iterateF(x, y), inf);
 
-                        drawPixel(x, y, (parameters.continuous) ? iterateFSmooth(x, y) : iterateF(x, y), inf);
-                    }
-
-                    if (reason == 2 || interpolatingColors) {
                         interpolateParameterChange((fullTimeoutNumber - t) / (fullTimeoutNumber - 1));
                         if (parameters.showPaths)
                             if (Math.abs(x - point[0]) <= pointS)
                                 markPoint();
-                    }
 
-                    if (t == 1)
-                        concludeMandelbrot();
-                }
-            });
+                        if (t == 1)
+                            updateParameters();
+                    }
+                })
+            else
+                drawTimeouts.push({
+                    t: t, f: function () {
+                        for (let y = yMin; y < yMax; y = yMin + pointS * (nY++))
+                            drawPixel(x, y, (parameters.continuous) ? iterateFSmooth(x, y) : iterateF(x, y), inf);
+
+                        if (t == 1)
+                            updateParameters();
+                    }
+                });
             setTimeout(runCallbacks, 0);
         }
         else
-            for (let y = yMin; y < yMax; y += pointSize) {
-                if (oldY == y) {
-                    limitReached = true;
-                    break;
-                }
-                oldY = y;
-
+            for (let y = yMin; y < yMax; y = yMin + pointSize * (nY++))
                 drawPixel(x, y, (parameters.continuous) ? iterateFSmooth(x, y) : iterateF(x, y), inf);
-            }
     }
-}
-
-function concludeMandelbrot() {
-    if (limitReached) {
-        parameters.x = oldPos.x;
-        parameters.y = oldPos.y;
-        parameters.scale = oldPos.scale;
-        parameters.res = oldPos.res;
-        ctx.drawImage(backupCanvas, 0, 0);
-    }
-
-    updateParameters();
 }
 
 
